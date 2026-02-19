@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Супер-Админ | Склады</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <nav id="navbar">
+      <div class="nav-logo">
+        <span>Склад Про</span>
+        <span id="currentWarehouseName"></span>
+      </div>
+
+      <div class="menu-toggle" id="mobile-menu">
+        <span class="bar"></span>
+        <span class="bar"></span>
+        <span class="bar"></span>
+      </div>
+
+      <ul class="nav-links">
+        <li data-role="SUPER_ADMIN">
+          <a href="/admin/warehouses.html">Склады</a>
+        </li>
+        <li data-role="ADMIN">
+          <a href="/category/categories.html">Категории</a>
+        </li>
+        <li data-role="ADMIN,SUPER_ADMIN">
+          <a href="/currency/currencies.html">Валюта</a>
+        </li>
+        <li data-role="ADMIN"><a href="/products/products.html">Товары</a></li>
+        <li data-role="SUPER_ADMIN,ADMIN">
+          <a href="/employees/employees.html">Сотрудники</a>
+        </li>
+        <li data-role="SUPER_ADMIN,ADMIN">
+          <a href="/clients/clients.html">Клиенты</a>
+        </li>
+        <li data-role="SUPER_ADMIN,ADMIN">
+          <a href="/suppliers/suppliers.html">Поставщики</a>
+        </li>
+        <li data-role="ADMIN,EMPLOYEE">
+          <a href="/checkout/checkout.html">Продажи</a>
+        </li>
+        <li data-role="ADMIN,EMPLOYEE">
+          <a href="/supply/supplies.html">Приход</a>
+        </li>
+        <li data-role="SUPER_ADMIN,ADMIN">
+          <a href="/reports/reports.html">Отчеты</a>
+        </li>
+        <li><a href="/index.html" onclick="logout()">Выход</a></li>
+      </ul>
+    </nav>
+
+    <div id="alertModal" class="modal" style="display: none">
+      <div class="modal-content" style="max-width: 400px; text-align: center">
+        <h3 id="alertTitle">Уведомление</h3>
+        <p id="alertMessage" style="margin: 20px 0"></p>
+        <div class="modal-buttons">
+          <button
+            id="alertCloseBtn"
+            class="btn"
+            style="width: 100%; padding: 10px; cursor: pointer"
+          >
+            Понятно
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="container">
+      <div class="header-row">
+        <h1>Управление складами</h1>
+        <button class="btn-add" onclick="openModal()">+ Создать склад</button>
+      </div>
+
+      <table id="warehouseTable">
+        <thead>
+          <tr>
+            <th>Название</th>
+            <th>Адрес</th>
+            <th>Валюта</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody id="warehouseBody"></tbody>
+      </table>
+    </div>
+
+    <div id="whModal" class="modal" style="display: none">
+      <div class="modal-content">
+        <h3 id="modalTitle">Новый склад</h3>
+        <input type="hidden" id="whId" />
+
+        <div class="form-group">
+          <label>Название склада:</label>
+          <input type="text" id="whName" placeholder="Напр: Склад Душанбе-1" />
+        </div>
+
+        <div class="form-group">
+          <label>Адрес:</label>
+          <input type="text" id="whAddress" placeholder="Улица, дом..." />
+        </div>
+
+        <div class="form-group">
+          <label>Базовая валюта:</label>
+          <select id="whCurrency"></select>
+          <small>Валюта, в которой ведется учет на этом складе</small>
+        </div>
+
+        <div class="modal-buttons">
+          <button onclick="closeModal()">Отмена</button>
+          <button onclick="saveWarehouse()">Сохранить</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="warehouses.js"></script>
+    <script src="/nav-guard.js"></script>
+  </body>
+</html>

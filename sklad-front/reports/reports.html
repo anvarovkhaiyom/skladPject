@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Отчеты</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <nav id="navbar">
+      <div class="nav-logo">
+        <span>Склад Про</span>
+        <span id="currentWarehouseName"></span>
+      </div>
+
+      <div class="menu-toggle" id="mobile-menu">
+        <span class="bar"></span>
+        <span class="bar"></span>
+        <span class="bar"></span>
+      </div>
+
+      <ul class="nav-links">
+        <li data-role="SUPER_ADMIN">
+          <a href="/admin/warehouses.html">Склады</a>
+        </li>
+        <li data-role="ADMIN">
+          <a href="/category/categories.html">Категории</a>
+        </li>
+        <li data-role="ADMIN,SUPER_ADMIN">
+          <a href="/currency/currencies.html">Валюта</a>
+        </li>
+        <li data-role="ADMIN"><a href="/products/products.html">Товары</a></li>
+        <li data-role="SUPER_ADMIN,ADMIN">
+          <a href="/employees/employees.html">Сотрудники</a>
+        </li>
+        <li data-role="SUPER_ADMIN,ADMIN">
+          <a href="/clients/clients.html">Клиенты</a>
+        </li>
+        <li data-role="SUPER_ADMIN,ADMIN">
+          <a href="/suppliers/suppliers.html">Поставщики</a>
+        </li>
+        <li data-role="ADMIN,EMPLOYEE">
+          <a href="/checkout/checkout.html">Продажи</a>
+        </li>
+        <li data-role="ADMIN,EMPLOYEE">
+          <a href="/supply/supplies.html">Приход</a>
+        </li>
+        <li data-role="SUPER_ADMIN,ADMIN">
+          <a href="/reports/reports.html">Отчеты</a>
+        </li>
+        <li><a href="/index.html" onclick="logout()">Выход</a></li>
+      </ul>
+    </nav>
+
+    <div id="alertModal" class="modal" style="display: none">
+      <div class="modal-content" style="max-width: 400px; text-align: center">
+        <h3 id="alertTitle">Уведомление</h3>
+        <p id="alertMessage" style="margin: 20px 0"></p>
+        <div class="modal-buttons">
+          <button
+            id="alertCloseBtn"
+            class="btn"
+            style="width: 100%; padding: 10px; cursor: pointer"
+          >
+            Понятно
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="container">
+      <h1>Архив документов</h1>
+      <div class="analytics-section">
+        <div class="filter-panel">
+          <div class="filter-section">
+            <div class="filter-group">
+              <label>От:</label>
+              <input type="date" id="dateStart" />
+            </div>
+            <div class="filter-group">
+              <label>До:</label>
+              <input type="date" id="dateEnd" />
+            </div>
+            <div class="filter-group">
+              <label>Клиент:</label>
+              <select id="clientFilter">
+                <option value="">Все клиенты</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Сотрудник:</label>
+              <select id="employeeFilter">
+                <option value="">Все сотрудники</option>
+              </select>
+            </div>
+            <div
+              class="filter-group"
+              id="warehouseFilterGroup"
+              style="display: none"
+            >
+              <label>Склад:</label>
+              <select id="warehouseFilter">
+                <option value="">Все склады</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="action-section">
+            <button class="btn-reset" onclick="resetFilters()">Сбросить</button>
+            <button class="btn-excel" onclick="downloadGlobal('sales-excel')">
+              Продажи Excel
+            </button>
+            <button class="btn-excel" onclick="downloadGlobal('stock-excel')">
+              Склад Excel
+            </button>
+          </div>
+        </div>
+      </div>
+      <table id="salesTable">
+        <thead>
+          <tr>
+            <th>№ Док.</th>
+            <th>Дата</th>
+            <th>Клиент</th>
+            <th>Сумма</th>
+            <th>Скачать документы (Excel)</th>
+          </tr>
+        </thead>
+        <tbody id="salesBody"></tbody>
+      </table>
+      <div class="stats-cards">
+        <div class="card">
+          <h3>Выручка за период</h3>
+          <p id="statRevenue">0 ₸</p>
+        </div>
+        <div class="card">
+          <h3>Прибыль</h3>
+          <p id="statProfit" style="color: #27ae60">0 ₸</p>
+        </div>
+        <div class="card">
+          <h3>Товаров на складе</h3>
+          <p id="statStockItems">0 шт</p>
+        </div>
+        <div class="card">
+          <h3>Оценка склада (закуп)</h3>
+          <p id="statStockValue">0 ₸</p>
+        </div>
+      </div>
+    </div>
+    <script src="reports.js"></script>
+    <script src="/nav-guard.js"></script>
+  </body>
+</html>

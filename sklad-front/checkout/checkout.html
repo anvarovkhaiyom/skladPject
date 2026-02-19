@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Оформление продажи — Склад Про</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <nav id="navbar">
+      <div class="nav-logo">
+        <span>Склад Про</span>
+        <span id="currentWarehouseName"></span>
+      </div>
+
+      <div class="menu-toggle" id="mobile-menu">
+        <span class="bar"></span>
+        <span class="bar"></span>
+        <span class="bar"></span>
+      </div>
+
+      <ul class="nav-links">
+        <li data-role="SUPER_ADMIN">
+          <a href="/admin/warehouses.html">Склады</a>
+        </li>
+        <li data-role="ADMIN">
+          <a href="/category/categories.html">Категории</a>
+        </li>
+        <li data-role="ADMIN,SUPER_ADMIN">
+          <a href="/currency/currencies.html">Валюта</a>
+        </li>
+        <li data-role="ADMIN"><a href="/products/products.html">Товары</a></li>
+        <li data-role="SUPER_ADMIN,ADMIN">
+          <a href="/employees/employees.html">Сотрудники</a>
+        </li>
+        <li data-role="SUPER_ADMIN,ADMIN">
+          <a href="/clients/clients.html">Клиенты</a>
+        </li>
+        <li data-role="SUPER_ADMIN,ADMIN">
+          <a href="/suppliers/suppliers.html">Поставщики</a>
+        </li>
+        <li data-role="ADMIN,EMPLOYEE">
+          <a href="/checkout/checkout.html">Продажи</a>
+        </li>
+        <li data-role="ADMIN,EMPLOYEE">
+          <a href="/supply/supplies.html">Приход</a>
+        </li>
+        <li data-role="SUPER_ADMIN,ADMIN">
+          <a href="/reports/reports.html">Отчеты</a>
+        </li>
+        <li><a href="/index.html" onclick="logout()">Выход</a></li>
+      </ul>
+    </nav>
+
+    <div id="alertModal" class="modal" style="display: none">
+      <div class="modal-content" style="max-width: 400px; text-align: center">
+        <h3 id="alertTitle">Уведомление</h3>
+        <p id="alertMessage" style="margin: 20px 0"></p>
+        <div class="modal-buttons">
+          <button
+            id="alertCloseBtn"
+            class="btn"
+            style="width: 100%; padding: 10px; cursor: pointer"
+          >
+            Понятно
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="container sale-container">
+      <div class="sale-main">
+        <div class="page-header">
+          <h2>Новая продажа</h2>
+        </div>
+
+        <div class="sale-card">
+          <div class="card-header">
+            <h3>Данные документа</h3>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Номер документа</label>
+              <input
+                type="text"
+                id="docNumber"
+                placeholder="Автоматически"
+                readonly
+              />
+            </div>
+            <div class="form-group">
+              <label>Клиент</label>
+              <select id="selectClient">
+                <option value="">Выберите клиента...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Марка авто</label>
+              <input type="text" id="carMark" placeholder="Например: Toyota" />
+            </div>
+            <div class="form-group">
+              <label>Гос. номер</label>
+              <input type="text" id="carNumber" placeholder="01 A 001 AA" />
+            </div>
+            <div class="form-group">
+              <label>ФИО водителя</label>
+              <input type="text" id="driverName" placeholder="Иван Иванов" />
+            </div>
+            <div class="form-group">
+              <label>№ Доверенности</label>
+              <input type="text" id="proxyNumber" placeholder="123456" />
+            </div>
+            <div class="form-group full-width-mobile">
+              <label>Дата доверенности</label>
+              <input type="date" id="proxyDate" />
+            </div>
+          </div>
+        </div>
+
+        <div class="sale-card">
+          <div class="card-header">
+            <h3>Выбор товаров</h3>
+          </div>
+          <div class="search-box">
+            <input
+              type="text"
+              id="barcodeSearch"
+              placeholder="🔍 Сканируйте штрих-код или введите артикул..."
+              onkeypress="handleBarcode(event)"
+            />
+          </div>
+          <div class="table-wrapper">
+            <table id="cartTable">
+              <thead>
+                <tr>
+                  <th>Товар</th>
+                  <th>Цена</th>
+                  <th>Кол-во</th>
+                  <th>Итого</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="cartBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <aside class="sale-sidebar">
+        <div class="total-card">
+          <div class="total-row main-total">
+            <span>Итого:</span>
+            <div>
+              <span id="totalBaseDisplay">0</span>
+              <span id="warehouseCurrencyLabel">₸</span>
+            </div>
+          </div>
+
+          <div class="payment-details">
+            <div class="form-group">
+              <label>Валюта оплаты</label>
+              <select
+                id="payCurrency"
+                onchange="changePaymentCurrency()"
+              ></select>
+            </div>
+
+            <div
+              id="rateContainer"
+              class="form-group highlight-box"
+              style="display: none"
+            >
+              <label>Курс обмена</label>
+              <input
+                type="number"
+                id="exchangeRate"
+                step="0.0001"
+                oninput="recalcForeignAmount()"
+              />
+            </div>
+
+            <div class="form-group">
+              <label>К оплате (в валюте)</label>
+              <input
+                type="number"
+                id="payAmount"
+                class="pay-input"
+                oninput="calculateChange()"
+              />
+            </div>
+
+            <div id="changeResult" class="change-info"></div>
+
+            <div class="form-group">
+              <label>Метод оплаты</label>
+              <select id="payMethod">
+                <option value="cash">💵 Наличные</option>
+                <option value="card">💳 Карта / Безнал</option>
+              </select>
+            </div>
+
+            <button class="btn-checkout" onclick="processSale()">
+              ✅ Оформить продажу
+            </button>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <script src="checkout.js"></script>
+    <script src="/nav-guard.js"></script>
+  </body>
+</html>

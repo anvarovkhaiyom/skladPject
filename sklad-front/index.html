@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Авторизация</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="mainPage">
+      <div id="datetime-widget">
+        <div class="time" id="currentTime">--:--</div>
+        <div class="date" id="currentDate">---</div>
+      </div>
+
+      <div class="login-container">
+        <div class="login-logo">
+          <img src="/img/logo.jpg" alt="sklad" />
+        </div>
+
+        <div class="top_login">
+          <h2>Вход в систему</h2>
+        </div>
+
+        <div class="main_login">
+          <div class="main_top_login">
+            <input type="text" id="login" placeholder="Логин" />
+          </div>
+          <div class="main_bottom_login">
+            <input type="password" id="password" placeholder="Пароль" />
+          </div>
+        </div>
+
+        <div class="bottom_login">
+          <button type="submit" onclick="login()">Войти</button>
+        </div>
+
+        <div id="error-message" class="error"></div>
+      </div>
+      <div id="alertModal" class="modal" style="display: none">
+        <div class="modal-content" style="max-width: 400px; text-align: center">
+          <h3 id="alertTitle">Уведомление</h3>
+          <p id="alertMessage" style="margin: 20px 0"></p>
+          <div class="modal-buttons">
+            <button id="alertCloseBtn" class="btn" style="width: 100%">
+              Понятно
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="app.js"></script>
+    <script src="nav-guard.js"></script>
+    <script>
+      document.addEventListener("keydown", function (event) {
+        if (event.key === "Enter") login();
+      });
+    </script>
+  </body>
+</html>
