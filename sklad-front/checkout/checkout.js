@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:9090/employee";
+const API_BASE = "http://194.163.157.81:9090/employee";
 let cart = [];
 let allCurrencies = [];
 let warehouseBaseCurrency = "";

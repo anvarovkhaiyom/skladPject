@@ -1,5 +1,5 @@
-const SUPER_API = "http://localhost:9090/super";
-const COMMON_API = "http://localhost:9090/admin";
+const SUPER_API = "http://194.163.157.81:9090/super";
+const COMMON_API = "http://194.163.157.81:9090/admin";
 
 function getHeaders() {
   return {

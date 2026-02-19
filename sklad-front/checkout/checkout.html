@@ -126,7 +126,7 @@
             <input
               type="text"
               id="barcodeSearch"
-              placeholder="🔍 Сканируйте штрих-код или введите артикул..."
+              placeholder="Сканируйте штрих-код или введите артикул..."
               onkeypress="handleBarcode(event)"
             />
           </div>
@@ -181,7 +181,7 @@
             </div>
 
             <div class="form-group">
-              <label>К оплате (в валюте)</label>
+              <label>К оплате</label>
               <input
                 type="number"
                 id="payAmount"
@@ -195,13 +195,13 @@
             <div class="form-group">
               <label>Метод оплаты</label>
               <select id="payMethod">
-                <option value="cash">💵 Наличные</option>
-                <option value="card">💳 Карта / Безнал</option>
+                <option value="cash">Наличные</option>
+                <option value="card">Карта</option>
               </select>
             </div>
 
             <button class="btn-checkout" onclick="processSale()">
-              ✅ Оформить продажу
+              Оформить продажу
             </button>
           </div>
         </div>

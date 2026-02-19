@@ -5,7 +5,7 @@ function login() {
   const errorElement = document.getElementById("error-message");
   if (errorElement) errorElement.textContent = "";
 
-  fetch("http://localhost:9090/auth/login", {
+  fetch("http://194.163.157.81:9090/auth/login", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

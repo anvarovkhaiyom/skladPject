@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:9090/admin";
+const API_BASE = "http://194.163.157.81:9090/admin";
 let categoriesMap = {};
 let allProducts = []; // Храним товары здесь для поиска
 let warehouseCurrency = "";
@@ -9,7 +9,7 @@ function getHeaders() {
   };
 }
 
-const API_WAREHOUSES = "http://localhost:9090/super/warehouses";
+const API_WAREHOUSES = "http://194.163.157.81:9090/super/warehouses";
 
 async function init() {
   const role = localStorage.getItem("role");

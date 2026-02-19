@@ -1,11 +1,11 @@
-const BASE_URL = "http://localhost:9090/admin";
+const BASE_URL = "http://194.163.157.81:9090/admin";
 const API_SALES = `${BASE_URL}/sale`;
 const API_REPORTS = `${BASE_URL}`;
 const API_CLIENTS = `${BASE_URL}/client`;
 const API_EMPLOYEES = `${BASE_URL}/employee`;
 const API_ANALYTICS = `${BASE_URL}/sales-summary`;
 const API_STOCK_SUMMARY = `${BASE_URL}/stock-summary`;
-const API_WAREHOUSES = `http://localhost:9090/super/warehouses`;
+const API_WAREHOUSES = `http://194.163.157.81:9090/super/warehouses`;
 function getHeaders() {
   const token = localStorage.getItem("token");
   return {
@@ -275,8 +275,8 @@ async function loadAnalytics() {
   let statsUrl, stockUrl;
 
   if (role.includes("SUPER_ADMIN") && !warehouseId) {
-    statsUrl = `http://localhost:9090/super/reports/sales?start=${start}&end=${end}`;
-    stockUrl = `http://localhost:9090/super/reports/summary`;
+    statsUrl = `http://194.163.157.81:9090/super/reports/sales?start=${start}&end=${end}`;
+    stockUrl = `http://194.163.157.81:9090/super/reports/summary`;
   } else {
     const query = `?start=${start}&end=${end}${warehouseId ? "&warehouseId=" + warehouseId : ""}`;
     statsUrl = `${BASE_URL}/sales-summary${query}`;

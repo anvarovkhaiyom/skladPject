@@ -1,5 +1,5 @@
-const API_BASE = "http://localhost:9090/admin/employee";
-const API_WAREHOUSES = "http://localhost:9090/super/warehouses";
+const API_BASE = "http://194.163.157.81:9090/admin/employee";
+const API_WAREHOUSES = "http://194.163.157.81:9090/super/warehouses";
 
 function getHeaders() {
   return {
