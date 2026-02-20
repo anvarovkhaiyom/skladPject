@@ -22,6 +22,10 @@ body {
 .mainPage {
   flex-direction: column;
 }
+#login,
+#password {
+  border: 1px solid var(--primary-dark);
+}
 body:has(.login-container) {
   display: flex;
   justify-content: center;
@@ -41,6 +45,7 @@ body:has(.login-container) {
   max-width: 400px;
   box-shadow: var(--shadow);
   border: 1px solid rgba(8, 135, 93, 0.1);
+  text-align: center;
 }
 
 .login-logo img {
@@ -288,15 +293,14 @@ td {
   margin-bottom: 20px;
   font-size: 1.1rem;
   color: #2c3e50;
-  border-bottom: 2px solid #3498db;
+  border-bottom: 2px solid #21a955;
   display: inline-block;
   padding-bottom: 5px;
 }
 
-/* ГРИД ДЛЯ ФОРМЫ (По 2 в ряд) */
 .form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr; /* Ровно два столбца */
+  grid-template-columns: 1fr 1fr;
   gap: 15px 25px;
 }
 
@@ -326,16 +330,14 @@ td {
   outline: none;
 }
 
-/* Таблица товаров */
 .table-wrapper {
-  overflow-x: auto; /* Скролл на мобилках */
+  overflow-x: auto;
   margin-top: 15px;
 }
 
-/* Сайдбар (Итоги) */
 .sale-sidebar {
   position: sticky;
-  top: 80px; /* Чтобы залипал при скролле */
+  top: 80px;
 }
 
 .total-card {
@@ -377,7 +379,7 @@ td {
   font-weight: bold;
   cursor: pointer;
   margin-top: 20px;
-  background: var(--success); /* начальный цвет */
+  background: var(--success);
   transition: background 0.3s;
 }
 
@@ -394,13 +396,12 @@ td {
     align-items: center;
   }
   .sale-container {
-    grid-template-columns: 1fr; /* Сайдбар уходит вниз */
+    grid-template-columns: 1fr;
   }
 
   .sale-sidebar {
     position: static;
   }
-  /* Боковое меню */
   .nav-links {
     position: fixed;
     right: -100%;
@@ -444,7 +445,6 @@ td {
     justify-content: center;
     text-align: center;
   }
-  /* Анимация крестика для бургера */
   .menu-toggle.is-active .bar:nth-child(2) {
     opacity: 0;
   }
@@ -560,10 +560,13 @@ td {
     right: 0;
     margin-bottom: 20px;
     text-align: center;
+    color: #066b4a;
+    font-weight: 700;
   }
 
   .login-container {
     width: 85%;
     padding: 25px;
+    text-align: center;
   }
 }

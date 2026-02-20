@@ -1,6 +1,6 @@
 const SUPER_API = "http://194.163.157.81:9090/super";
 const COMMON_API = "http://194.163.157.81:9090/admin";
-
+/*http://194.163.157.81:9090*/
 function getHeaders() {
   return {
     "Content-Type": "application/json",
