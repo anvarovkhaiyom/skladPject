@@ -41,11 +41,14 @@ public class SaleServiceImpl implements SaleService {
         resp.setTotalAmount(sale.getTotalAmount());
         resp.setChangeAmount(sale.getChangeAmount());
         resp.setDocumentNumber(sale.getDocumentNumber());
+
         if (sale.getClient() != null) {
             resp.setClientId(sale.getClient().getId());
             resp.setClientName(sale.getClient().getFullName());
+        } else {
+            resp.setClientName("Розничный покупатель");
         }
-        resp.setClientId(sale.getClient() != null ? sale.getClient().getId() : null);
+
         resp.setEmployeeId(sale.getEmployee() != null ? sale.getEmployee().getId() : null);
 
         List<SaleItemResponse> itemResponses = new ArrayList<>();
@@ -86,7 +89,6 @@ public class SaleServiceImpl implements SaleService {
             throw new RuntimeException("Нет товаров в продаже");
         }
 
-        // Достаем текущего сотрудника и его склад через наш новый Helper
         EmployeeModel currentEmployee = securityHelper.getCurrentEmployee();
         WarehouseModel warehouse = currentEmployee.getWarehouse();
 
@@ -98,14 +100,13 @@ public class SaleServiceImpl implements SaleService {
         sale.setSaleDate(LocalDateTime.now());
         sale.setStatus("Оплачено");
         sale.setEmployee(currentEmployee);
-        sale.setWarehouse(warehouse); // ПРИВЯЗКА К СКЛАДУ
+        sale.setWarehouse(warehouse);
 
-        // Нумерация документов ВНУТРИ конкретного склада
         Integer lastId = saleRepository.findMaxIdByWarehouseId(warehouse != null ? warehouse.getId() : null);
         int nextId = (lastId == null) ? 1 : lastId + 1;
         sale.setDocumentNumber(String.format("%07d", nextId));
 
-        // Данные о машине и водителе
+        // Машина/Водитель
         sale.setCarMark(request.getCarMark());
         sale.setCarNumber(request.getCarNumber());
         sale.setDriverName(request.getDriverName());
@@ -113,7 +114,6 @@ public class SaleServiceImpl implements SaleService {
         sale.setProxyDate(request.getProxyDate());
 
         if (request.getClientId() != null) {
-            // Проверяем клиента (чтобы не продать клиенту чужого склада)
             sale.setClient(clientRepository.findById(request.getClientId())
                     .orElseThrow(() -> new RuntimeException("Клиент не найден")));
         }
@@ -122,11 +122,15 @@ public class SaleServiceImpl implements SaleService {
         List<SaleItemModel> items = new ArrayList<>();
 
         for (SaleItemRequest itemReq : request.getItems()) {
-            // ВАЖНО: Ищем товар только на СВОЕМ складе
-            ProductModel product = productRepository.findByBarcodeAndWarehouseId(
-                    itemReq.getBarcode(),
-                    warehouse != null ? warehouse.getId() : null
-            ).orElseThrow(() -> new RuntimeException("Товар с баркодом " + itemReq.getBarcode() + " не найден на вашем складе!"));
+            ProductModel product;
+
+            if (itemReq.getProductId() != null) {
+                product = productRepository.findById(itemReq.getProductId())
+                        .orElseThrow(() -> new RuntimeException("Товар с ID " + itemReq.getProductId() + " не найден"));
+            } else {
+                product = productRepository.findByBarcodeAndWarehouseId(itemReq.getBarcode(), warehouse.getId())
+                        .orElseThrow(() -> new RuntimeException("Товар с баркодом " + itemReq.getBarcode() + " не найден"));
+            }
 
             BigDecimal qty = itemReq.getQuantity();
             BigDecimal itemTotal = product.getSalePrice().multiply(qty);
@@ -145,7 +149,6 @@ public class SaleServiceImpl implements SaleService {
             items.add(si);
             totalAmountBase = totalAmountBase.add(itemTotal);
 
-            // Списание остатков
             product.setStockQuantity(product.getStockQuantity().subtract(qty));
             productRepository.save(product);
         }
@@ -153,7 +156,6 @@ public class SaleServiceImpl implements SaleService {
         sale.setItems(items);
         sale.setTotalAmount(totalAmountBase);
 
-        // Логика платежей
         BigDecimal totalPaidInBase = BigDecimal.ZERO;
         List<SalePaymentModel> payments = new ArrayList<>();
 

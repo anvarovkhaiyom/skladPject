@@ -32,29 +32,29 @@ async function loadSuppliers() {
 
 async function handleSearch(e) {
   if (e.key === "Enter") {
-    const query = e.target.value.trim();
+    const query = e.target.value.trim().toLowerCase();
     if (!query) return;
 
     try {
       const res = await fetch(`${API_BASE}/product`, { headers: getHeaders() });
       const products = await res.json();
 
+      // Ищем по баркоду, артикулу (sku) ИЛИ названию
       const product = products.find(
-        (p) => p.barcode === query || p.sku === query,
+        (p) =>
+          p.barcode === query ||
+          p.sku === query ||
+          p.name.toLowerCase().includes(query),
       );
 
       if (product) {
         addItem(product);
         e.target.value = "";
       } else {
-        showAlert(
-          "Товар не найден! Проверьте артикул или штрих-код.",
-          "Внимание",
-          "error",
-        );
+        showAlert("Товар не найден", "Внимание", "error");
       }
     } catch (e) {
-      showAlert("Ошибка при поиске товара", "Ошибка", "error");
+      showAlert("Ошибка при поиске", "Ошибка", "error");
     }
   }
 }

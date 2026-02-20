@@ -119,22 +119,25 @@ async function loadClients() {
 }
 async function handleBarcode(e) {
   if (e.key === "Enter") {
-    const barcode = e.target.value.trim();
-    if (!barcode) return;
+    const query = e.target.value.trim().toLowerCase();
+    if (!query) return;
 
     try {
       const res = await fetch(`${API_BASE}/product`, { headers: getHeaders() });
       const products = await res.json();
-      const product = products.find((p) => p.barcode === barcode);
+
+      const product = products.find(
+        (p) => p.barcode === query || p.name.toLowerCase().includes(query),
+      );
 
       if (product) {
         addToCart(product);
         e.target.value = "";
       } else {
-        showAlert("Товар с таким штрих-кодом не найден", "Внимание", "error");
+        showAlert("Товар не найден", "Внимание", "error");
       }
     } catch (e) {
-      showAlert("Ошибка при поиске товара", "Ошибка", "error");
+      showAlert("Ошибка при поиске", "Ошибка", "error");
     }
   }
 }

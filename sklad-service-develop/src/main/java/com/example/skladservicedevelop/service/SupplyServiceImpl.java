@@ -37,9 +37,17 @@ public class SupplyServiceImpl implements SupplyService {
         }
 
         for (SupplyItemRequest it : request.getItems()) {
-            ProductModel product = productRepository.findByBarcodeAndWarehouseId(it.getBarcode(), warehouse.getId())
-                    .orElseGet(() -> productRepository.findBySkuAndWarehouseId(it.getSku(), warehouse.getId())
-                            .orElseThrow(() -> new RuntimeException("Товар " + it.getBarcode() + " не зарегистрирован на вашем складе")));
+            ProductModel product;
+
+            // ПОИСК: Сначала по ID (если выбрали в списке), иначе по баркоду или артикулу
+            if (it.getProductId() != null) {
+                product = productRepository.findById(it.getProductId())
+                        .orElseThrow(() -> new RuntimeException("Товар не найден"));
+            } else {
+                product = productRepository.findByBarcodeAndWarehouseId(it.getBarcode(), warehouse.getId())
+                        .orElseGet(() -> productRepository.findBySkuAndWarehouseId(it.getSku(), warehouse.getId())
+                                .orElseThrow(() -> new RuntimeException("Товар не найден на вашем складе")));
+            }
 
             BigDecimal qty = it.getQuantity() != null ? it.getQuantity() : BigDecimal.ZERO;
             if (qty.compareTo(BigDecimal.ZERO) <= 0) {
@@ -50,6 +58,9 @@ public class SupplyServiceImpl implements SupplyService {
 
             BigDecimal currentStock = product.getStockQuantity() != null ? product.getStockQuantity() : BigDecimal.ZERO;
             product.setStockQuantity(currentStock.add(qty));
+
+            // Обновляем закупочную цену товара, если она изменилась при приходе
+            product.setCostPrice(costPrice);
             productRepository.save(product);
 
             SupplyHistoryModel sh = new SupplyHistoryModel();
