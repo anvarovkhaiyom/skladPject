@@ -387,6 +387,9 @@ td {
   justify-content: space-around;
   align-items: center;
 }
+.search-item {
+  margin-top: 15px;
+}
 .btn-checkout:hover {
   background: var(--primary-dark);
 }
