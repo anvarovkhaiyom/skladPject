@@ -384,9 +384,8 @@ td {
   transition: background 0.3s;
 }
 .search-box {
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
+  flex-direction: column;
+  gap: 20px;
 }
 .btn-checkout:hover {
   background: var(--primary-dark);
