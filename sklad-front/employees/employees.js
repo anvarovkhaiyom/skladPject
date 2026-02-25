@@ -1,5 +1,5 @@
-const API_BASE = "http://localhost:9090/admin/employee";
-const API_WAREHOUSES = "http://localhost:9090/super/warehouses";
+const API_BASE = "http://194.163.157.81:9090/admin/employee";
+const API_WAREHOUSES = "http://194.163.157.81:9090/super/warehouses";
 
 document.addEventListener("DOMContentLoaded", async () => {
   const role = localStorage.getItem("role");
@@ -207,7 +207,7 @@ function editEmployee(emp) {
 function closeModal() {
   document.getElementById("employeeModal").style.display = "none";
 }
-const API_DRIVER = "http://localhost:9090/employee/driver";
+const API_DRIVER = "http://194.163.157.81:9090/employee/driver";
 
 document.addEventListener("DOMContentLoaded", async () => {
   const role = localStorage.getItem("role");
