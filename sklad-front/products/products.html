@@ -42,6 +42,12 @@
         <li data-role="ADMIN,EMPLOYEE">
           <a href="/checkout/checkout.html">Продажи</a>
         </li>
+        <li data-role="SUPER_ADMIN,ADMIN">
+          <a href="/expense/expense.html">Расходы</a>
+        </li>
+        <li data-role="SUPER_ADMIN,ADMIN">
+          <a href="/write-off/write-off.html">Списания</a>
+        </li>
         <li data-role="ADMIN,EMPLOYEE">
           <a href="/supply/supplies.html">Приход</a>
         </li>
@@ -139,12 +145,32 @@
             <select id="prodCategory"></select>
           </div>
           <div class="form-group">
-            <label>Ед. изм (Unit):</label>
-            <input type="text" id="prodUnit" placeholder="кг/шт/уп" />
+            <label>Ед. измерения:</label>
+            <select id="prodUnit">
+              <option value="шт">шт (штуки)</option>
+              <option value="кг">кг (килограммы)</option>
+              <option value="уп">уп (упаковки)</option>
+              <option value="л">л (литры)</option>
+              <option value="м">м (метры)</option>
+            </select>
           </div>
           <div class="form-group">
-            <label>Себестоимость:</label>
-            <input type="number" id="prodCostPrice" step="0.01" />
+            <label>Себестоимость (из накладных):</label>
+            <input
+              type="number"
+              id="prodCostPrice"
+              readonly
+              style="background: #f0f0f0; cursor: not-allowed"
+            />
+          </div>
+          <div class="form-group">
+            <label>Текущий остаток:</label>
+            <input
+              type="number"
+              id="prodStock"
+              readonly
+              style="background: #f0f0f0; cursor: not-allowed"
+            />
           </div>
           <div class="form-group">
             <label>Цена продажи:</label>
@@ -161,12 +187,8 @@
               type="number"
               id="prodWeight"
               step="0.001"
-              placeholder="0.00"
+              placeholder="0.00 кг"
             />
-          </div>
-          <div class="form-group">
-            <label>На складе (нач. остаток):</label>
-            <input type="number" id="prodStock" step="0.01" />
           </div>
           <div class="form-group">
             <label>Штрих-код:</label>

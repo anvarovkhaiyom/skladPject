@@ -1,23 +1,16 @@
 package com.example.skladservicedevelop.database.model;
-
-import javax.persistence.*;
-
 import lombok.Data;
 
+import javax.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-
 @Entity
-@Table(name = "supply_history")
+@Table(name = "write_off_history")
 @Data
-public class SupplyHistoryModel {
+public class WriteOffHistoryModel {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
-
-    @ManyToOne
-    @JoinColumn(name = "supplier_id", nullable = false)
-    private SupplierModel supplier;
 
     @ManyToOne
     @JoinColumn(name = "product_id", nullable = false)
@@ -27,20 +20,18 @@ public class SupplyHistoryModel {
     @JoinColumn(name = "employee_id", nullable = false)
     private EmployeeModel employee;
 
-    @Column(name = "cost_price", nullable = false)
-    private BigDecimal costPrice;
-
     @Column(nullable = false)
     private BigDecimal quantity;
 
-    @Column(name = "barcode", nullable = false)
-    private String barcode;
+    @Column(nullable = false)
+    private String reason;
 
-    @Column(name = "supply_date", nullable = false)
-    private LocalDateTime supplyDate;
+    @Column(name = "write_off_date", nullable = false)
+    private LocalDateTime writeOffDate;
+
     @ManyToOne
     @JoinColumn(name = "warehouse_id")
     private WarehouseModel warehouse;
-    @Column(name = "documentNumber")
+    @Column(name = "document_number")
     private String documentNumber;
 }

@@ -1,11 +1,11 @@
-const BASE_URL = "http://194.163.157.81:9090/admin";
-const API_SALES = `${BASE_URL}/sale`;
+const BASE_URL = "http://localhost:9090/admin";
+const API_SALES = `${BASE_URL}/archive`;
 const API_REPORTS = `${BASE_URL}`;
 const API_CLIENTS = `${BASE_URL}/client`;
 const API_EMPLOYEES = `${BASE_URL}/employee`;
 const API_ANALYTICS = `${BASE_URL}/sales-summary`;
 const API_STOCK_SUMMARY = `${BASE_URL}/stock-summary`;
-const API_WAREHOUSES = `http://194.163.157.81:9090/super/warehouses`;
+const API_WAREHOUSES = `http://localhost:9090/super/warehouses`;
 function getHeaders() {
   const token = localStorage.getItem("token");
   return {
@@ -103,66 +103,95 @@ async function fillSelectFilters() {
 async function loadSales() {
   const start = document.getElementById("dateStart").value;
   const end = document.getElementById("dateEnd").value;
-  const client = document.getElementById("clientFilter").value;
-  const employee = document.getElementById("employeeFilter").value;
   const warehouseId = document.getElementById("warehouseFilter")?.value || "";
 
-  const params = new URLSearchParams({
-    start,
-    end,
-    clientName: client,
-    employeeName: employee,
-    warehouseId,
-  });
+  const clientName = document.getElementById("clientFilter")?.value || "";
+  const employeeName = document.getElementById("employeeFilter")?.value || "";
+
+  const params = new URLSearchParams();
+  params.append("start", start);
+  params.append("end", end);
+
+  if (warehouseId) params.append("warehouseId", warehouseId);
+  if (clientName) params.append("clientName", clientName);
+  if (employeeName) params.append("employeeName", employeeName);
 
   try {
-    const res = await fetch(`${API_SALES}?${params}`, {
+    const res = await fetch(`${API_SALES}?${params.toString()}`, {
       method: "GET",
       headers: getHeaders(),
     });
+
     if (res.ok) {
       renderTable(await res.json());
     } else {
-      showAlert("Ошибка при загрузке списка продаж", "Ошибка", "error");
+      showAlert("Ошибка при загрузке архива", "Ошибка", "error");
     }
   } catch (err) {
-    showAlert("Проблема с сетью при загрузке отчета", "Ошибка", "error");
+    showAlert("Проблема с сетью", "Ошибка", "error");
   }
 }
 
-function renderTable(sales) {
+function renderTable(documents) {
   const body = document.getElementById("salesBody");
   if (!body) return;
   body.innerHTML = "";
 
-  if (!Array.isArray(sales) || sales.length === 0) {
+  if (!Array.isArray(documents) || documents.length === 0) {
     body.innerHTML =
-      "<tr><td colspan='5' style='text-align:center'>За выбранный период продаж нет</td></tr>";
+      "<tr><td colspan='5' style='text-align:center'>За выбранный период документов нет</td></tr>";
     return;
   }
 
-  sales.forEach((sale) => {
-    const dateStr = sale.saleDate
-      ? new Date(sale.saleDate).toLocaleString("ru-RU")
-      : "—";
-    const amount = (sale.totalAmount || 0).toLocaleString();
+  documents.forEach((doc) => {
+    const dateStr = doc.date ? new Date(doc.date).toLocaleString("ru-RU") : "—";
+    const amount = (doc.amount || 0).toLocaleString();
+
+    // Определяем стили и названия на основе типа документа
+    let typeLabel = doc.type; // "Отпуск", "Приход", "Списание", "Расход"
+    let amountColor = "#4d6dfc"; // По умолчанию синий
+    let rowBg = "#ffffff";
+
+    if (doc.type === "Отпуск") {
+      amountColor = "#4d6dfc"; // Синий
+    } else if (doc.type === "Приход") {
+      amountColor = "#12cc7b"; // Зеленый
+    } else if (doc.type === "Списание") {
+      amountColor = "#e67e22"; // Оранжевый
+      rowBg = "#fffcf9";
+    } else if (doc.type === "Расход") {
+      amountColor = "#e74c3c"; // Красный
+      rowBg = "#fffafb";
+    }
 
     body.innerHTML += `
-      <tr>
-        <td data-label="Документ"><strong>${sale.documentNumber || "№" + sale.id}</strong></td>
+      <tr style="background-color: ${rowBg};">
+        <td data-label="Документ">
+            <span style="font-size: 0.8em; color: #888; display: block; font-weight: normal; text-transform: uppercase;">
+                ${typeLabel}
+            </span>
+            <strong>${doc.documentNumber || "№ " + doc.id}</strong>
+        </td>
         <td data-label="Дата/Время">${dateStr}</td>
-        <td data-label="Контрагент">${sale.clientName || "Розничный покупатель"}</td>
-        <td data-label="Сумма">${amount} ₸</td>
+        <td data-label="Контрагент">${doc.counterparty || "—"}</td>
+        <td data-label="Сумма" style="color: ${amountColor}; font-weight: bold;">
+            ${amount} ₸
+        </td>
         <td data-label="Выгрузка" class="report-buttons">
-          <button title="Сборочный лист" class="btn-report" onclick="downloadFile(${sale.id}, 'picking-list')">📦</button>
-          <button title="Счет-фактура" class="btn-report" onclick="downloadFile(${sale.id}, 'invoice-boxes')">📄</button>
-          <button title="Отчет Z-2" class="btn-report" onclick="downloadFile(${sale.id}, 'z2-report')">📋</button>
-          <button title="ТТН" class="btn-report" onclick="downloadFile(${sale.id}, 'ttn')">🚛</button>
+          ${
+            doc.type === "Отпуск"
+              ? `
+            <button title="Сборочный лист" class="btn-report" onclick="downloadFile(${doc.id}, 'picking-list')">📦</button>
+            <button title="Счет-фактура" class="btn-report" onclick="downloadFile(${doc.id}, 'invoice-boxes')">📄</button>
+            <button title="Отчет Z-2" class="btn-report" onclick="downloadFile(${doc.id}, 'z2-report')">📋</button>
+            <button title="ТТН" class="btn-report" onclick="downloadFile(${doc.id}, 'ttn')">🚛</button>
+          `
+              : `<span style="color: #bdc3c7; font-size: 0.85em;">Документов нет</span>`
+          }
         </td>
       </tr>`;
   });
 }
-
 async function downloadFile(id, type) {
   const url = `${API_REPORTS}/${type}/${id}`;
   try {
@@ -189,17 +218,21 @@ async function downloadGlobal(type) {
   const warehouseId = document.getElementById("warehouseFilter")?.value || "";
 
   const params = new URLSearchParams();
-  if (type === "sales-excel") {
+
+  // Для всех отчетов, кроме остатков склада, нужны даты
+  if (type !== "stock-excel") {
     params.append("start", start);
     params.append("end", end);
   }
+
   if (warehouseId) {
     params.append("warehouseId", warehouseId);
   }
 
   try {
+    // API_REPORTS у тебя ведет на BASE_URL, убедись что пути совпадают с контроллером
     const response = await fetch(
-      `${API_REPORTS}/${type}?${params.toString()}`,
+      `${API_REPORTS}/reports/${type}?${params.toString()}`,
       {
         headers: getHeaders(),
       },
@@ -211,14 +244,10 @@ async function downloadGlobal(type) {
     const downloadUrl = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = downloadUrl;
-    link.setAttribute(
-      "download",
-      `${type}_${new Date().toLocaleDateString()}.xlsx`,
-    );
+    link.setAttribute("download", `${type}_${start}_${end}.xlsx`);
     document.body.appendChild(link);
     link.click();
     link.remove();
-    window.URL.revokeObjectURL(downloadUrl);
   } catch (error) {
     showAlert("Ошибка экспорта: " + error.message, "Ошибка", "error");
   }
@@ -275,8 +304,8 @@ async function loadAnalytics() {
   let statsUrl, stockUrl;
 
   if (role.includes("SUPER_ADMIN") && !warehouseId) {
-    statsUrl = `http://194.163.157.81:9090/super/reports/sales?start=${start}&end=${end}`;
-    stockUrl = `http://194.163.157.81:9090/super/reports/summary`;
+    statsUrl = `http://localhost:9090/super/reports/sales?start=${start}&end=${end}`;
+    stockUrl = `http://localhost:9090/super/reports/summary`;
   } else {
     const query = `?start=${start}&end=${end}${warehouseId ? "&warehouseId=" + warehouseId : ""}`;
     statsUrl = `${BASE_URL}/sales-summary${query}`;
@@ -294,15 +323,26 @@ async function loadAnalytics() {
     const salesData = await resSales.json();
     const stockData = await resStock.json();
 
+    // Основные статы
     document.getElementById("statRevenue").textContent =
-      `${salesData.totalRevenue?.toLocaleString() || 0} ₸`;
+      `${(salesData.totalRevenue || 0).toLocaleString()} ₸`;
     document.getElementById("statProfit").textContent =
-      `${salesData.totalProfit?.toLocaleString() || 0} ₸`;
+      `${(salesData.totalProfit || 0).toLocaleString()} ₸`;
     document.getElementById("statStockItems").textContent =
       `${stockData.totalItems || 0} шт`;
     document.getElementById("statStockValue").textContent =
-      `${stockData.totalCostValue?.toLocaleString() || 0} ₸`;
+      `${(stockData.totalCostValue || 0).toLocaleString()} ₸`;
+
+    // НОВЫЕ СТАТЫ (Расходы и Списания)
+    const expEl = document.getElementById("statExpenses");
+    if (expEl)
+      expEl.textContent = `${(salesData.totalExpenses || 0).toLocaleString()} ₸`;
+
+    const woEl = document.getElementById("statWriteOffs");
+    if (woEl)
+      woEl.textContent = `${(salesData.totalWriteOffCost || 0).toLocaleString()} ₸`;
   } catch (err) {
+    console.error(err);
     showAlert("Ошибка при расчете аналитических данных", "Внимание", "error");
   }
 }

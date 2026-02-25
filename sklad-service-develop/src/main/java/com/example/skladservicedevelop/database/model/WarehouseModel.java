@@ -1,6 +1,7 @@
 package com.example.skladservicedevelop.database.model;
 import javax.persistence.*;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 
 import java.util.List;
@@ -23,6 +24,7 @@ public class WarehouseModel {
     private CurrencyModel baseCurrency;
 
     @OneToMany(mappedBy = "warehouse")
+    @JsonIgnore
     private List<EmployeeModel> employees;
 
     @OneToMany(mappedBy = "warehouse")

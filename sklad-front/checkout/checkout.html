@@ -43,6 +43,12 @@
         <li data-role="ADMIN,EMPLOYEE">
           <a href="/checkout/checkout.html">Продажи</a>
         </li>
+        <li data-role="SUPER_ADMIN,ADMIN">
+          <a href="/expense/expense.html">Расходы</a>
+        </li>
+        <li data-role="SUPER_ADMIN,ADMIN">
+          <a href="/write-off/write-off.html">Списания</a>
+        </li>
         <li data-role="ADMIN,EMPLOYEE">
           <a href="/supply/supplies.html">Приход</a>
         </li>
@@ -52,7 +58,6 @@
         <li><a href="/index.html" onclick="logout()">Выход</a></li>
       </ul>
     </nav>
-
     <div id="alertModal" class="modal" style="display: none">
       <div class="modal-content" style="max-width: 400px; text-align: center">
         <h3 id="alertTitle">Уведомление</h3>
@@ -70,25 +75,29 @@
     </div>
 
     <div class="container sale-container">
-      <div class="sale-main">
-        <div class="page-header">
-          <h2>Новая продажа</h2>
-        </div>
+      <div
+        class="page-header"
+        style="
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 20px;
+        "
+      >
+        <h2>Оформление продажи</h2>
+        <button
+          class="btn-checkout"
+          id="btnOpenCheckout"
+          onclick="openCheckoutModal()"
+          style="width: auto; padding: 10px; text-align: center"
+        >
+          Перейти к оплате (<span id="cartCount">0</span>)
+        </button>
+      </div>
 
-        <div class="sale-card">
-          <div class="card-header">
-            <h3>Данные документа</h3>
-          </div>
+      <div class="sale-main" style="display: block">
+        <div class="sale-card" style="margin-bottom: 20px">
           <div class="form-grid">
-            <div class="form-group">
-              <label>Номер документа</label>
-              <input
-                type="text"
-                id="docNumber"
-                placeholder="Автоматически"
-                readonly
-              />
-            </div>
             <div class="form-group">
               <label>Клиент</label>
               <select id="selectClient">
@@ -96,68 +105,116 @@
               </select>
             </div>
             <div class="form-group">
-              <label>Марка авто</label>
-              <input type="text" id="carMark" placeholder="Например: Toyota" />
+              <label>Водитель</label>
+              <select id="selectDriver">
+                <option value="">Выберите водителя...</option>
+              </select>
             </div>
             <div class="form-group">
-              <label>Гос. номер</label>
-              <input type="text" id="carNumber" placeholder="01 A 001 AA" />
-            </div>
-            <div class="form-group">
-              <label>ФИО водителя</label>
-              <input type="text" id="driverName" placeholder="Иван Иванов" />
-            </div>
-            <div class="form-group">
-              <label>№ Доверенности</label>
-              <input type="text" id="proxyNumber" placeholder="123456" />
-            </div>
-            <div class="form-group full-width-mobile">
               <label>Дата доверенности</label>
               <input type="date" id="proxyDate" />
             </div>
+
+            <input type="hidden" id="docNumber" />
+            <input type="hidden" id="driverName" />
+            <input type="hidden" id="carNumber" />
+            <input type="hidden" id="carMark" />
+            <input type="hidden" id="proxyNumber" />
           </div>
         </div>
 
         <div class="sale-card">
-          <div class="card-header">
-            <h3>Выбор товаров</h3>
-          </div>
-          <div class="search-box">
+          <div
+            class="card-header"
+            style="
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-end;
+            "
+          >
+            <h3>Каталог товаров</h3>
             <input
               type="text"
-              id="barcodeSearch"
-              placeholder="Сканируйте штрих-код или введите артикул..."
-              onkeypress="handleBarcode(event)"
+              id="mainSearch"
+              placeholder="Поиск по названию или штрих-коду..."
+              oninput="filterCatalog(this.value)"
+              style="
+                width: 350px;
+                padding: 10px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+              "
             />
           </div>
           <div class="table-wrapper">
-            <table id="cartTable">
+            <table>
               <thead>
                 <tr>
-                  <th>Товар</th>
+                  <th>Товар / Штрих-код</th>
+                  <th>В наличии</th>
                   <th>Цена</th>
-                  <th>Кол-во</th>
-                  <th>Итого</th>
-                  <th></th>
+                  <th style="text-align: right">Действие</th>
                 </tr>
               </thead>
-              <tbody id="cartBody"></tbody>
+              <tbody id="catalogBody"></tbody>
             </table>
           </div>
         </div>
       </div>
+    </div>
 
-      <aside class="sale-sidebar">
-        <div class="total-card">
-          <div class="total-row main-total">
-            <span>Итого:</span>
-            <div>
-              <span id="totalBaseDisplay">0</span>
-              <span id="warehouseCurrencyLabel">₸</span>
+    <div id="checkoutModal" class="modal" style="display: none">
+      <div class="modal-content" style="max-width: 900px; padding: 0">
+        <div
+          class="card-header"
+          style="display: flex; justify-content: space-between; padding: 20px"
+        >
+          <h3 style="margin: 0">Завершение продажи</h3>
+          <span
+            onclick="closeCheckoutModal()"
+            style="cursor: pointer; font-size: 24px"
+            >&times;</span
+          >
+        </div>
+
+        <div style="display: flex; flex-wrap: wrap; padding: 20px; gap: 20px">
+          <div style="flex: 1; min-width: 400px">
+            <div class="table-wrapper" style="max-height: 400px">
+              <table style="width: 100%">
+                <thead style="position: sticky; top: 0; background: #fff">
+                  <tr>
+                    <th>Товар</th>
+                    <th>Кол-во</th>
+                    <th>Сумма</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="cartModalBody"></tbody>
+              </table>
             </div>
           </div>
 
-          <div class="payment-details">
+          <div
+            style="
+              width: 300px;
+              background: #f9f9f9;
+              padding: 20px;
+              border-radius: 8px;
+            "
+          >
+            <div
+              style="
+                font-size: 1.2rem;
+                margin-bottom: 20px;
+                font-weight: bold;
+                border-bottom: 2px solid #ddd;
+                padding-bottom: 10px;
+              "
+            >
+              Итого: <span id="totalBaseDisplay">0</span>
+              <span id="warehouseCurrencyLabel">₸</span>
+            </div>
+
             <div class="form-group">
               <label>Валюта оплаты</label>
               <select
@@ -166,11 +223,7 @@
               ></select>
             </div>
 
-            <div
-              id="rateContainer"
-              class="form-group highlight-box"
-              style="display: none"
-            >
+            <div id="rateContainer" class="form-group" style="display: none">
               <label>Курс обмена</label>
               <input
                 type="number"
@@ -190,7 +243,10 @@
               />
             </div>
 
-            <div id="changeResult" class="change-info"></div>
+            <div
+              id="changeResult"
+              style="margin-bottom: 15px; min-height: 24px"
+            ></div>
 
             <div class="form-group">
               <label>Метод оплаты</label>
@@ -200,14 +256,17 @@
               </select>
             </div>
 
-            <button class="btn-checkout" onclick="processSale()">
-              Оформить продажу
+            <button
+              class="btn-checkout"
+              onclick="processSale()"
+              style="width: 100%; margin-top: 10px"
+            >
+              Подтвердить и оплатить
             </button>
           </div>
         </div>
-      </aside>
+      </div>
     </div>
-
     <script src="checkout.js"></script>
     <script src="/nav-guard.js"></script>
   </body>

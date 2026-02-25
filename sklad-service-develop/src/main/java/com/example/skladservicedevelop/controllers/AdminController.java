@@ -1,5 +1,8 @@
 package com.example.skladservicedevelop.controllers;
 
+import com.example.skladservicedevelop.database.model.ExpenseModel;
+import com.example.skladservicedevelop.database.model.WriteOffHistoryModel;
+import com.example.skladservicedevelop.dto.ArchiveDocumentDto;
 import com.example.skladservicedevelop.dto.request.*;
 import com.example.skladservicedevelop.dto.response.*;
 import com.example.skladservicedevelop.service.*;
@@ -28,7 +31,7 @@ public class AdminController {
     private final SalesReportService salesReportService;
     private final SupplyService supplyService;
     private final SaleService saleService;
-
+    private final InventoryOperationService operationService;
     private final CurrencyService currencyService;
     private final ReportService reportService;
     private final WarehouseService warehouseService;
@@ -286,7 +289,7 @@ public class AdminController {
         return ResponseEntity.ok(reportService.getStockSummary(warehouseId));
     }
 
-    @GetMapping("/sales-excel")
+    @GetMapping("/reports/sales-excel")
     public ResponseEntity<byte[]> downloadGeneralSalesReport(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end,
@@ -296,11 +299,70 @@ public class AdminController {
         return createResponse(data, "General_Sales_Report");
     }
 
-    @GetMapping("/stock-excel")
+    @GetMapping("/reports/stock-excel")
     public ResponseEntity<byte[]> downloadStockReport(
             @RequestParam(required = false) Integer warehouseId) {
         byte[] data = reportService.generateStockReportExcel(warehouseId);
         return createResponse(data, "Stock_Inventory_Report");
     }
 
+    @GetMapping("/reports/supply-history-excel")
+    public ResponseEntity<byte[]> downloadSupplyHistory(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end,
+            @RequestParam(required = false) Integer warehouseId) {
+        byte[] bytes = reportService.generateSupplyHistoryExcel(start, end, warehouseId);
+        return createExcelResponse(bytes, "supply_history.xlsx");
+    }
+
+    @GetMapping("/reports/movement-excel")
+    public ResponseEntity<byte[]> downloadMovementJournal(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end,
+            @RequestParam(required = false) Integer warehouseId) {
+
+        byte[] bytes = reportService.generateMovementJournalExcel(start, end, warehouseId);
+
+        return createExcelResponse(bytes, "movement_journal.xlsx");
+    }
+
+    private ResponseEntity<byte[]> createExcelResponse(byte[] bytes, String fileName) {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + fileName)
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .body(bytes);
+    }
+
+    @GetMapping("/archive")
+    public List<ArchiveDocumentDto> getArchive(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end,
+            @RequestParam(required = false) Integer warehouseId,
+            @RequestParam(required = false) String clientName,
+            @RequestParam(required = false) String employeeName) {
+
+        return reportService.getDocumentArchive(start, end, warehouseId, clientName, employeeName);
+    }
+
+    // EXPENSES
+    @PostMapping("/write-off")
+    public ResponseEntity<String> writeOff(@RequestBody WriteOffRequest request) {
+        operationService.createWriteOff(request);
+        return ResponseEntity.ok("Списание товара успешно оформлено");
+    }
+
+    @PostMapping("/expense")
+    public ResponseEntity<String> addExpense(@RequestBody ExpenseRequest request) {
+        operationService.createExpense(request);
+        return ResponseEntity.ok("Расход успешно зафиксирован");
+    }
+    @GetMapping("/expenses")
+    public ResponseEntity<List<ExpenseModel>> getExpenses() {
+        return ResponseEntity.ok(operationService.getAllExpenses());
+    }
+
+    @GetMapping("/write-offs")
+    public ResponseEntity<List<WriteOffHistoryModel>> getWriteOffs() {
+        return ResponseEntity.ok(operationService.getAllWriteOffs());
+    }
 }

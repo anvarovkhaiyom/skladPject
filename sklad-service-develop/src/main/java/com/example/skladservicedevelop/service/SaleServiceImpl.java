@@ -86,7 +86,7 @@ public class SaleServiceImpl implements SaleService {
     @Transactional
     public SaleResponse createSale(SaleRequest request) {
         if (request.getItems() == null || request.getItems().isEmpty()) {
-            throw new RuntimeException("Нет товаров в продаже");
+            throw new RuntimeException("Ошибка: Корзина пуста!");
         }
 
         EmployeeModel currentEmployee = securityHelper.getCurrentEmployee();
@@ -104,9 +104,7 @@ public class SaleServiceImpl implements SaleService {
 
         Integer lastId = saleRepository.findMaxIdByWarehouseId(warehouse != null ? warehouse.getId() : null);
         int nextId = (lastId == null) ? 1 : lastId + 1;
-        sale.setDocumentNumber(String.format("%07d", nextId));
-
-        // Машина/Водитель
+        sale.setDocumentNumber(String.format("ПР-%07d", nextId));
         sale.setCarMark(request.getCarMark());
         sale.setCarNumber(request.getCarNumber());
         sale.setDriverName(request.getDriverName());
@@ -126,44 +124,52 @@ public class SaleServiceImpl implements SaleService {
 
             if (itemReq.getProductId() != null) {
                 product = productRepository.findById(itemReq.getProductId())
-                        .orElseThrow(() -> new RuntimeException("Товар с ID " + itemReq.getProductId() + " не найден"));
+                        .orElseThrow(() -> new RuntimeException("Товар не найден (ID: " + itemReq.getProductId() + ")"));
             } else {
                 product = productRepository.findByBarcodeAndWarehouseId(itemReq.getBarcode(), warehouse.getId())
-                        .orElseThrow(() -> new RuntimeException("Товар с баркодом " + itemReq.getBarcode() + " не найден"));
+                        .orElseThrow(() -> new RuntimeException("Товар не найден (Баркод: " + itemReq.getBarcode() + ")"));
+            }
+            if (product.isDeleted()) {
+                throw new RuntimeException("Ошибка: Товар '" + product.getName() + "' удален и недоступен для продажи.");
+            }
+            BigDecimal qtyToSale = itemReq.getQuantity();
+            if (product.getStockQuantity().compareTo(qtyToSale) < 0) {
+                throw new RuntimeException("Недостаточно товара '" + product.getName() +
+                        "'. На складе: " + product.getStockQuantity() + ", запрос: " + qtyToSale);
             }
 
-            BigDecimal qty = itemReq.getQuantity();
-            BigDecimal itemTotal = product.getSalePrice().multiply(qty);
+            BigDecimal itemTotal = product.getSalePrice().multiply(qtyToSale);
 
             SaleItemModel si = new SaleItemModel();
             si.setSale(sale);
             si.setProduct(product);
-            si.setQuantity(qty);
+            si.setQuantity(qtyToSale);
             si.setUnitPrice(product.getSalePrice());
             si.setTotalPrice(itemTotal);
+            si.setCostPriceAtSale(product.getCostPrice() != null ? product.getCostPrice() : BigDecimal.ZERO);
 
             BigDecimal inBox = product.getItemsInBox() != null ? product.getItemsInBox() : BigDecimal.ONE;
-            si.setBoxCount(qty.divide(inBox, 2, java.math.RoundingMode.HALF_UP));
+            si.setBoxCount(qtyToSale.divide(inBox, 2, java.math.RoundingMode.HALF_UP));
             si.setItemsPerBoxAtSale(inBox);
 
             items.add(si);
             totalAmountBase = totalAmountBase.add(itemTotal);
 
-            product.setStockQuantity(product.getStockQuantity().subtract(qty));
+            // 3. Вычитание из остатка
+            product.setStockQuantity(product.getStockQuantity().subtract(qtyToSale));
             productRepository.save(product);
         }
 
         sale.setItems(items);
         sale.setTotalAmount(totalAmountBase);
 
+        // Логика платежей (без изменений)
         BigDecimal totalPaidInBase = BigDecimal.ZERO;
         List<SalePaymentModel> payments = new ArrayList<>();
-
         if (request.getPayments() != null) {
             for (PaymentRequest pReq : request.getPayments()) {
                 CurrencyModel currency = currencyRepository.findByCode(pReq.getCurrency())
                         .orElseThrow(() -> new RuntimeException("Валюта не найдена: " + pReq.getCurrency()));
-
                 BigDecimal rate = (pReq.getRate() != null) ? pReq.getRate() : BigDecimal.ONE;
                 totalPaidInBase = totalPaidInBase.add(pReq.getAmount().multiply(rate));
 
@@ -176,7 +182,6 @@ public class SaleServiceImpl implements SaleService {
                 payments.add(payment);
             }
         }
-
         sale.setPayments(payments);
         sale.setChangeAmount(totalPaidInBase.subtract(totalAmountBase));
 

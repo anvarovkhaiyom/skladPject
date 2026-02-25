@@ -1,11 +1,10 @@
 package com.example.skladservicedevelop.service;
 
 import com.example.skladservicedevelop.config.SecurityHelper;
-import com.example.skladservicedevelop.database.model.ProductModel;
-import com.example.skladservicedevelop.database.model.SaleItemModel;
-import com.example.skladservicedevelop.database.model.SaleModel;
-import com.example.skladservicedevelop.database.repository.ProductRepository;
-import com.example.skladservicedevelop.database.repository.SaleRepository;
+import com.example.skladservicedevelop.database.model.*;
+import com.example.skladservicedevelop.database.repository.*;
+import com.example.skladservicedevelop.dto.ArchiveDocumentDto;
+import com.example.skladservicedevelop.dto.MovementDto;
 import com.example.skladservicedevelop.dto.response.SalesDataRow;
 import com.example.skladservicedevelop.dto.response.SalesSummaryResponse;
 import com.example.skladservicedevelop.dto.response.StockSummaryResponse;
@@ -24,8 +23,10 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -34,6 +35,9 @@ public class ReportServiceImpl implements ReportService {
     private final SaleRepository saleRepository;
     private final ProductRepository productRepository;
     private final SecurityHelper securityHelper;
+    private final SupplyHistoryRepository supplyHistoryRepository;
+    private final ExpenseRepository expenseRepository;
+    private final WriteOffHistoryRepository writeOffRepository;
 
     private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy");
     private final DateTimeFormatter longFormatter = DateTimeFormatter.ofPattern("dd MMMM yyyy", new Locale("ru"));
@@ -199,58 +203,72 @@ public class ReportServiceImpl implements ReportService {
     @Override
     @Transactional(readOnly = true)
     public SalesSummaryResponse getSalesSummary(LocalDate start, LocalDate end, Integer categoryId, Integer warehouseId) {
-        // 1. Сначала проверяем, пришел ли ID из фильтра (от Супер-Админа)
-        // 2. Если нет, пытаемся взять ID текущего пользователя (через SecurityHelper)
         Integer finalWhId = (warehouseId != null) ? warehouseId : securityHelper.getCurrentWarehouseId();
-
         LocalDateTime startDT = start.atStartOfDay();
         LocalDateTime endDT = end.atTime(LocalTime.MAX);
 
-        List<SaleModel> sales;
-        // Если finalWhId всё еще null, значит это Супер-Админ смотрит ГЛОБАЛЬНЫЙ отчет
-        if (finalWhId == null) {
-            sales = saleRepository.findAllBySaleDateBetween(startDT, endDT);
-        } else {
-            sales = saleRepository.findAllByWarehouseIdAndSaleDateBetween(finalWhId, startDT, endDT);
-        }
+        // 1. Считаем Продажи (Revenue & COGS)
+        List<SaleModel> sales = (finalWhId == null)
+                ? saleRepository.findAllBySaleDateBetween(startDT, endDT)
+                : saleRepository.findAllByWarehouseIdAndSaleDateBetween(finalWhId, startDT, endDT);
 
         BigDecimal totalRevenue = BigDecimal.ZERO;
-        BigDecimal totalCost = BigDecimal.ZERO;
+        BigDecimal totalCostOfSales = BigDecimal.ZERO;
         List<SalesDataRow> details = new ArrayList<>();
 
         for (SaleModel sale : sales) {
-            BigDecimal saleRevenueFromCategory = BigDecimal.ZERO;
-            BigDecimal saleCostFromCategory = BigDecimal.ZERO;
-            boolean hasTargetProducts = false;
+            BigDecimal saleRev = BigDecimal.ZERO;
+            BigDecimal saleCost = BigDecimal.ZERO;
+            boolean hasMatch = false;
 
             for (SaleItemModel item : sale.getItems()) {
-                // Фильтрация по категории, если она указана
                 if (categoryId == null || (item.getProduct().getCategory() != null && item.getProduct().getCategory().getId().equals(categoryId))) {
-                    BigDecimal itemRevenue = item.getTotalPrice();
-                    BigDecimal itemCost = (item.getProduct().getCostPrice() != null ? item.getProduct().getCostPrice() : BigDecimal.ZERO)
-                            .multiply(item.getQuantity());
-
-                    saleRevenueFromCategory = saleRevenueFromCategory.add(itemRevenue);
-                    saleCostFromCategory = saleCostFromCategory.add(itemCost);
-                    hasTargetProducts = true;
+                    saleRev = saleRev.add(item.getTotalPrice());
+                    saleCost = saleCost.add((item.getProduct().getCostPrice() != null ? item.getProduct().getCostPrice() : BigDecimal.ZERO).multiply(item.getQuantity()));
+                    hasMatch = true;
                 }
             }
-
-            if (hasTargetProducts) {
-                totalRevenue = totalRevenue.add(saleRevenueFromCategory);
-                totalCost = totalCost.add(saleCostFromCategory);
-                details.add(new SalesDataRow(
-                        sale.getSaleDate().format(formatter),
-                        getDocNumber(sale),
-                        getClientName(sale),
-                        saleRevenueFromCategory,
-                        saleCostFromCategory,
-                        saleRevenueFromCategory.subtract(saleCostFromCategory)
-                ));
+            if (hasMatch) {
+                totalRevenue = totalRevenue.add(saleRev);
+                totalCostOfSales = totalCostOfSales.add(saleCost);
+                details.add(new SalesDataRow(sale.getSaleDate().format(formatter), getDocNumber(sale), getClientName(sale), saleRev, saleCost, saleRev.subtract(saleCost)));
             }
         }
 
-        return new SalesSummaryResponse(totalRevenue, totalCost, totalRevenue.subtract(totalCost), (long) details.size(), details);
+        // 2. Считаем Расходы (Expenses) - учитываем только если не фильтруем по категории товара
+        BigDecimal totalExpenses = BigDecimal.ZERO;
+        if (categoryId == null) {
+            List<ExpenseModel> expenses = (finalWhId == null)
+                    ? expenseRepository.findAllByExpenseDateBetween(startDT, endDT)
+                    : expenseRepository.findAllByWarehouseIdAndExpenseDateBetween(finalWhId, startDT, endDT);
+            totalExpenses = expenses.stream().map(ExpenseModel::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        }
+
+        // 3. Считаем Списания (Write-offs) - потери по себестоимости
+        BigDecimal totalWriteOffCost = BigDecimal.ZERO;
+        List<WriteOffHistoryModel> writeOffs = (finalWhId == null)
+                ? writeOffRepository.findAllByWriteOffDateBetween(startDT, endDT)
+                : writeOffRepository.findAllByWarehouseIdAndWriteOffDateBetween(finalWhId, startDT, endDT);
+
+        for (WriteOffHistoryModel wo : writeOffs) {
+            if (categoryId == null || (wo.getProduct().getCategory() != null && wo.getProduct().getCategory().getId().equals(categoryId))) {
+                BigDecimal cost = (wo.getProduct().getCostPrice() != null ? wo.getProduct().getCostPrice() : BigDecimal.ZERO).multiply(wo.getQuantity());
+                totalWriteOffCost = totalWriteOffCost.add(cost);
+            }
+        }
+
+        // Итоговая чистая прибыль
+        BigDecimal netProfit = totalRevenue.subtract(totalCostOfSales).subtract(totalExpenses).subtract(totalWriteOffCost);
+
+        return new SalesSummaryResponse(
+                totalRevenue,
+                totalCostOfSales,
+                netProfit,
+                (long) details.size(),
+                details,
+                totalExpenses,      // Добавь это поле в DTO
+                totalWriteOffCost   // Добавь это поле в DTO
+        );
     }
 
     @Override
@@ -264,8 +282,10 @@ public class ReportServiceImpl implements ReportService {
             createTitle(sheet, 0, "Общий отчет по продажам: " + start.format(formatter) + " - " + end.format(formatter), 5);
 
             createRowKeyValue(sheet, 2, "Итого Выручка:", summary.getTotalRevenue().toString() + " ₸");
-            createRowKeyValue(sheet, 3, "Итого Себестоимость:", summary.getTotalCost().toString() + " ₸");
-            createRowKeyValue(sheet, 4, "Чистая Прибыль:", summary.getTotalProfit().toString() + " ₸");
+            createRowKeyValue(sheet, 3, "Себестоимость продаж:", summary.getTotalCost().toString() + " ₸");
+            createRowKeyValue(sheet, 4, "Операционные расходы:", summary.getTotalExpenses().toString() + " ₸");
+            createRowKeyValue(sheet, 5, "Потери (Списания):", summary.getTotalWriteOffCost().toString() + " ₸");
+            createRowKeyValue(sheet, 6, "ЧИСТАЯ ПРИБЫЛЬ:", summary.getTotalProfit().toString() + " ₸");
 
             String[] headers = {"Дата", "Документ", "Клиент", "Выручка", "Себестоимость", "Прибыль"};
             createTableHeader(sheet, 6, headers);
@@ -290,27 +310,31 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     public StockSummaryResponse getStockSummary(Integer warehouseId) {
-        // Логика: если warehouseId пришел из фильтра — берем его,
-        // если нет — берем привязанный склад текущего пользователя.
         Integer finalWhId = (warehouseId != null) ? warehouseId : securityHelper.getCurrentWarehouseId();
 
         List<ProductModel> products = (finalWhId == null)
                 ? productRepository.findAll()
                 : productRepository.findAllByWarehouseId(finalWhId);
 
+        List<ProductModel> activeProducts = products.stream()
+                .filter(p -> !p.isDeleted())
+                .collect(Collectors.toList());
+
         BigDecimal totalItems = BigDecimal.ZERO;
         BigDecimal totalCost = BigDecimal.ZERO;
         BigDecimal totalSale = BigDecimal.ZERO;
 
         for (ProductModel p : products) {
+            if (p.isDeleted()) continue;
+
             BigDecimal qty = p.getStockQuantity() != null ? p.getStockQuantity() : BigDecimal.ZERO;
             totalItems = totalItems.add(qty);
             totalCost = totalCost.add((p.getCostPrice() != null ? p.getCostPrice() : BigDecimal.ZERO).multiply(qty));
             totalSale = totalSale.add((p.getSalePrice() != null ? p.getSalePrice() : BigDecimal.ZERO).multiply(qty));
         }
-
         return new StockSummaryResponse(totalItems, totalCost, totalSale, totalSale.subtract(totalCost));
     }
+
     @Override
     public byte[] generateStockReportExcel(Integer warehouseId) {
         // Определяем склад (приоритет фильтру, затем безопасности)
@@ -320,7 +344,7 @@ public class ReportServiceImpl implements ReportService {
         List<ProductModel> products = (finalWhId == null)
                 ? productRepository.findAll()
                 : productRepository.findAllByWarehouseId(finalWhId);
-
+        products = products.stream().filter(p -> !p.isDeleted()).collect(Collectors.toList());
         try (Workbook workbook = new XSSFWorkbook()) {
             initStyles(workbook);
             Sheet sheet = workbook.createSheet("Остатки на складе");
@@ -349,7 +373,227 @@ public class ReportServiceImpl implements ReportService {
         }
     }
 
-    // --- ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ---
+    @Override
+    public byte[] generateSupplyHistoryExcel(LocalDate start, LocalDate end, Integer warehouseId) {
+        List<SupplyHistoryModel> supplies = supplyHistoryRepository.findAllBySupplyDateBetween(
+                start.atStartOfDay(), end.atTime(LocalTime.MAX));
+
+        if (warehouseId != null) {
+            supplies = supplies.stream()
+                    .filter(s -> s.getWarehouse().getId().equals(warehouseId))
+                    .collect(Collectors.toList());
+        }
+
+        try (Workbook workbook = new XSSFWorkbook()) {
+            initStyles(workbook);
+
+            Sheet sheet = workbook.createSheet("История поставок");
+
+            createTitle(sheet, 0, "История поставок: " + start.format(formatter) + " - " + end.format(formatter), 7);
+
+            String[] headers = {"Дата", "Поставщик", "Товар", "Кол-во", "Цена закупа", "Сумма", "Принял", "Склад"};
+            createTableHeader(sheet, 2, headers);
+
+            int rowIdx = 3;
+            for (SupplyHistoryModel s : supplies) {
+                Row row = sheet.createRow(rowIdx++);
+                createCell(row, 0, s.getSupplyDate().format(formatter), dataStyle);
+                createCell(row, 1, s.getSupplier().getFullName(), dataStyle);
+                createCell(row, 2, s.getProduct().getName(), dataStyle);
+                createCell(row, 3, s.getQuantity(), dataStyle);
+                createCell(row, 4, s.getCostPrice(), currencyStyle);
+                createCell(row, 5, s.getCostPrice().multiply(s.getQuantity()), currencyStyle);
+                createCell(row, 6, s.getEmployee().getFullName(), dataStyle);
+                createCell(row, 7, s.getWarehouse().getName(), dataStyle);
+            }
+
+            autoSizeColumns(sheet, headers.length); // Не забываем автоподбор ширины
+            return workbookToBytes(workbook);
+        } catch (Exception e) {
+            throw new RuntimeException("Ошибка экспорта поставок: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public List<MovementDto> getMovementJournal(LocalDate start, LocalDate end, Integer warehouseId) {
+        LocalDateTime s = start.atStartOfDay();
+        LocalDateTime e = end.atTime(LocalTime.MAX);
+        List<MovementDto> journal = new ArrayList<>();
+
+        // Продажи
+        saleRepository.findAllBySaleDateBetween(s, e).forEach(sale -> {
+            if (warehouseId == null || sale.getWarehouse().getId().equals(warehouseId)) {
+                journal.add(new MovementDto(sale.getSaleDate(), "Продажа", "№" + sale.getDocumentNumber(),
+                        getClientName(sale), sale.getEmployee().getFullName(), sale.getTotalAmount(), sale.getWarehouse().getName()));
+            }
+        });
+
+        // Приходы
+        supplyHistoryRepository.findAllBySupplyDateBetween(s, e).forEach(supply -> {
+            if (warehouseId == null || supply.getWarehouse().getId().equals(warehouseId)) {
+                journal.add(new MovementDto(supply.getSupplyDate(), "Приход", "№" + supply.getDocumentNumber(),
+                        supply.getSupplier().getFullName(), supply.getEmployee().getFullName(), supply.getCostPrice().multiply(supply.getQuantity()), supply.getWarehouse().getName()));
+            }
+        });
+
+        writeOffRepository.findAllByWriteOffDateBetween(s, e).forEach(wo -> {
+            if (warehouseId == null || wo.getWarehouse().getId().equals(warehouseId)) {
+                BigDecimal cost = (wo.getProduct().getCostPrice() != null ? wo.getProduct().getCostPrice() : BigDecimal.ZERO)
+                        .multiply(wo.getQuantity());
+
+                journal.add(new MovementDto(
+                        wo.getWriteOffDate(),
+                        "Списание",
+                        wo.getDocumentNumber(),
+                        wo.getProduct().getName(),
+                        wo.getEmployee().getFullName(),
+                        cost.negate(),
+                        wo.getWarehouse().getName()
+                ));
+            }
+        });
+
+        // Расходы
+        expenseRepository.findAllByExpenseDateBetween(s, e).forEach(exp -> {
+            if (warehouseId == null || exp.getWarehouse().getId().equals(warehouseId)) {
+                journal.add(new MovementDto(
+                        exp.getExpenseDate(),
+                        "Расход",
+                        exp.getDocumentNumber(),
+                        exp.getCategory() + ": " + exp.getDescription(),
+                        exp.getEmployee().getFullName(),
+                        exp.getAmount().negate(),
+                        exp.getWarehouse().getName()
+                ));
+            }
+        });
+
+        return journal.stream()
+                .sorted(Comparator.comparing(MovementDto::getDate).reversed())
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public byte[] generateMovementJournalExcel(LocalDate start, LocalDate end, Integer warehouseId) {
+        List<MovementDto> journal = getMovementJournal(start, end, warehouseId);
+
+        // Считаем итоги
+        BigDecimal totalSales = BigDecimal.ZERO;
+        BigDecimal totalSupplies = BigDecimal.ZERO;
+        BigDecimal totalWriteOffs = BigDecimal.ZERO;
+        BigDecimal totalExpenses = BigDecimal.ZERO;
+
+        for (MovementDto m : journal) {
+            // Заменяем стрелки -> на классический case : break
+            switch (m.getType()) {
+                case "Продажа":
+                    totalSales = totalSales.add(m.getAmount());
+                    break;
+                case "Приход":
+                    totalSupplies = totalSupplies.add(m.getAmount());
+                    break;
+                case "Списание":
+                    totalWriteOffs = totalWriteOffs.add(m.getAmount().abs());
+                    break;
+                case "Расход":
+                    totalExpenses = totalExpenses.add(m.getAmount().abs());
+                    break;
+            }
+        }
+        BigDecimal netResult = totalSales.subtract(totalWriteOffs).subtract(totalExpenses);
+
+        try (Workbook workbook = new XSSFWorkbook()) {
+            initStyles(workbook);
+            Sheet sheet = workbook.createSheet("Журнал движений");
+
+            createTitle(sheet, 0, "Журнал движения документов: " + start + " - " + end, 6);
+            String[] headers = {"Дата", "Тип", "№ Документа", "Контрагент/Товар", "Сотрудник", "Сумма", "Склад"};
+            createTableHeader(sheet, 2, headers);
+
+            int rowIdx = 3;
+            for (MovementDto m : journal) {
+                Row row = sheet.createRow(rowIdx++);
+                String formattedDate = m.getDate().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"));
+
+                createCell(row, 0, formattedDate, dataStyle);
+                createCell(row, 1, m.getType(), dataStyle);
+                createCell(row, 2, m.getDocNumber(), dataStyle);
+                createCell(row, 3, m.getCounterparty(), dataStyle);
+                createCell(row, 4, m.getEmployee(), dataStyle);
+                createCell(row, 5, m.getAmount(), currencyStyle);
+                createCell(row, 6, m.getWarehouse(), dataStyle);
+            }
+
+            rowIdx++;
+            createRowSummary(sheet, rowIdx++, "Итого продаж:", totalSales);
+            createRowSummary(sheet, rowIdx++, "Итого приход:", totalSupplies);
+            createRowSummary(sheet, rowIdx++, "Итого списано:", totalWriteOffs);
+            createRowSummary(sheet, rowIdx++, "Расходы:", totalExpenses);
+
+            Row resultRow = sheet.createRow(rowIdx);
+            createCell(resultRow, 4, "Чистая прибыль:", headerStyle);
+            createCell(resultRow, 5, netResult, currencyStyle);
+
+            autoSizeColumns(sheet, headers.length);
+            return workbookToBytes(workbook);
+        } catch (Exception e) {
+            throw new RuntimeException("Ошибка генерации Excel", e);
+        }
+    }
+
+    private void createRowSummary(Sheet sheet, int rowIdx, String label, BigDecimal value) {
+        Row row = sheet.createRow(rowIdx);
+        createCell(row, 4, label, dataStyle);
+        createCell(row, 5, value, currencyStyle);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ArchiveDocumentDto> getDocumentArchive(LocalDate start, LocalDate end, Integer warehouseId, String clientName, String employeeName) {
+        LocalDateTime startDT = start.atStartOfDay();
+        LocalDateTime endDT = end.atTime(LocalTime.MAX);
+        List<ArchiveDocumentDto> archive = new ArrayList<>();
+
+        // 1. Продажи (Отпуск)
+        saleRepository.findAllBySaleDateBetween(startDT, endDT).stream()
+                .filter(sale -> warehouseId == null || sale.getWarehouse().getId().equals(warehouseId))
+                .filter(sale -> clientName == null || clientName.isEmpty() || getClientName(sale).contains(clientName))
+                .filter(sale -> employeeName == null || employeeName.isEmpty() || (sale.getEmployee() != null && sale.getEmployee().getFullName().contains(employeeName)))
+                .forEach(sale -> archive.add(new ArchiveDocumentDto(
+                        sale.getId(), "Отпуск", sale.getDocumentNumber(), sale.getSaleDate(), getClientName(sale), sale.getTotalAmount()
+                )));
+
+        // 2. Приходы
+        supplyHistoryRepository.findAllBySupplyDateBetween(startDT, endDT).stream()
+                .filter(sup -> warehouseId == null || sup.getWarehouse().getId().equals(warehouseId))
+                .filter(sup -> clientName == null || clientName.isEmpty() || (sup.getSupplier() != null && sup.getSupplier().getFullName().contains(clientName)))
+                .forEach(sup -> archive.add(new ArchiveDocumentDto(
+                        sup.getId(), "Приход", sup.getDocumentNumber(), sup.getSupplyDate(),
+                        sup.getSupplier() != null ? sup.getSupplier().getFullName() : "Поставщик",
+                        sup.getCostPrice().multiply(sup.getQuantity())
+                )));
+
+        // 3. Списания (Добавляем!)
+        writeOffRepository.findAllByWriteOffDateBetween(startDT, endDT).stream()
+                .filter(wo -> warehouseId == null || wo.getWarehouse().getId().equals(warehouseId))
+                .filter(wo -> employeeName == null || employeeName.isEmpty() || (wo.getEmployee() != null && wo.getEmployee().getFullName().contains(employeeName)))
+                .forEach(wo -> archive.add(new ArchiveDocumentDto(
+                        wo.getId(), "Списание", wo.getDocumentNumber(), wo.getWriteOffDate(), wo.getProduct().getName(),
+                        wo.getProduct().getCostPrice().multiply(wo.getQuantity()).negate() // В минус
+                )));
+
+        // 4. Расходы (Добавляем!)
+        expenseRepository.findAllByExpenseDateBetween(startDT, endDT).stream()
+                .filter(exp -> warehouseId == null || exp.getWarehouse().getId().equals(warehouseId))
+                .filter(exp -> employeeName == null || employeeName.isEmpty() || (exp.getEmployee() != null && exp.getEmployee().getFullName().contains(employeeName)))
+                .forEach(exp -> archive.add(new ArchiveDocumentDto(
+                        exp.getId(), "Расход", exp.getDocumentNumber(), exp.getExpenseDate(), exp.getCategory(), exp.getAmount().negate()
+                )));
+
+        return archive.stream()
+                .sorted(Comparator.comparing(ArchiveDocumentDto::getDate).reversed())
+                .collect(Collectors.toList());
+    }
 
     private void initStyles(Workbook wb) {
         // Заголовок таблицы
@@ -378,7 +622,6 @@ public class ReportServiceImpl implements ReportService {
         currencyStyle.cloneStyleFrom(dataStyle);
         currencyStyle.setDataFormat(wb.createDataFormat().getFormat("#,##0.00"));
     }
-
     private void createTitle(Sheet sheet, int rowIdx, String text, int lastCol) {
         Row row = sheet.createRow(rowIdx);
         Cell cell = row.createCell(0);

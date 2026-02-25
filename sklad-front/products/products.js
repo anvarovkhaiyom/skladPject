@@ -1,4 +1,4 @@
-const API_BASE = "http://194.163.157.81:9090/admin";
+const API_BASE = "http://localhost:9090/admin";
 let categoriesMap = {};
 let allProducts = []; // Храним товары здесь для поиска
 let warehouseCurrency = "";
@@ -9,7 +9,7 @@ function getHeaders() {
   };
 }
 
-const API_WAREHOUSES = "http://194.163.157.81:9090/super/warehouses";
+const API_WAREHOUSES = "http://localhost:9090/super/warehouses";
 
 async function init() {
   const role = localStorage.getItem("role");
@@ -130,18 +130,19 @@ function renderTable(products) {
 
 async function saveProduct() {
   const id = document.getElementById("prodId").value;
+
   const payload = {
     name: document.getElementById("prodName").value.trim(),
     categoryId: document.getElementById("prodCategory").value
       ? Number(document.getElementById("prodCategory").value)
       : null,
-    unit: document.getElementById("prodUnit").value || "шт",
-    costPrice: Number(document.getElementById("prodCostPrice").value) || 0,
+    unit: document.getElementById("prodUnit").value,
     salePrice: Number(document.getElementById("prodSalePrice").value) || 0,
     itemsInBox: Number(document.getElementById("prodItemsInBox").value) || 1,
     weightBrutto: Number(document.getElementById("prodWeight").value) || 0,
-    stockQuantity: Number(document.getElementById("prodStock").value) || 0,
     barcode: document.getElementById("prodBarcode").value.trim(),
+    costPrice: Number(document.getElementById("prodCostPrice").value) || 0,
+    stockQuantity: Number(document.getElementById("prodStock").value) || 0,
     photoUrl: "",
   };
 
@@ -221,7 +222,6 @@ function handleSearch() {
 }
 
 async function editProduct(id) {
-  // Ищем товар в памяти (чтобы не делать лишний запрос)
   const p = allProducts.find((item) => item.id === id);
   if (!p) return;
 
@@ -229,13 +229,29 @@ async function editProduct(id) {
   document.getElementById("prodName").value = p.name;
   document.getElementById("prodSku").value = p.sku || "";
   document.getElementById("prodCategory").value = p.categoryId || "";
-  document.getElementById("prodUnit").value = p.unit;
-  document.getElementById("prodCostPrice").value = p.costPrice;
-  document.getElementById("prodSalePrice").value = p.salePrice;
-  document.getElementById("prodStock").value = p.stockQuantity;
+  document.getElementById("prodUnit").value = p.unit || "шт";
   document.getElementById("prodBarcode").value = p.barcode || "";
   document.getElementById("prodItemsInBox").value = p.itemsInBox || "";
   document.getElementById("prodWeight").value = p.weightBrutto || "";
+  document.getElementById("prodSalePrice").value = p.salePrice;
+
+  // --- ЛОГИКА БЛОКИРОВКИ ---
+  const stockInput = document.getElementById("prodStock");
+  const costInput = document.getElementById("prodCostPrice");
+
+  // Заполняем данные для просмотра
+  stockInput.value = p.stockQuantity;
+  costInput.value = p.costPrice;
+
+  // Блокируем поля, так как товар уже существует
+  stockInput.readOnly = true;
+  costInput.readOnly = true;
+
+  // Визуально выделяем блокировку
+  stockInput.style.backgroundColor = "#f0f0f0";
+  costInput.style.backgroundColor = "#f0f0f0";
+  stockInput.title = "Изменяется только через 'Приход'";
+  costInput.title = "Изменяется только через 'Приход'";
 
   document.getElementById("modalTitle").innerText = "Редактировать товар";
   document.getElementById("productModal").style.display = "flex";
@@ -243,7 +259,13 @@ async function editProduct(id) {
 
 function openModal() {
   document.getElementById("prodId").value = "";
+
   document.querySelectorAll(".modal input").forEach((i) => (i.value = ""));
+
+  document.getElementById("prodUnit").value = "шт";
+  document.getElementById("prodStock").value = 0;
+  document.getElementById("prodCostPrice").value = 0;
+
   document.getElementById("modalTitle").innerText = "Добавить товар";
   document.getElementById("productModal").style.display = "flex";
 }

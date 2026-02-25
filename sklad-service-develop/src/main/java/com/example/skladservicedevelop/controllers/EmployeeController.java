@@ -1,5 +1,7 @@
 package com.example.skladservicedevelop.controllers;
 
+import com.example.skladservicedevelop.database.model.DriverModel;
+import com.example.skladservicedevelop.dto.request.DriverRequest;
 import com.example.skladservicedevelop.dto.request.SaleRequest;
 import com.example.skladservicedevelop.dto.response.*;
 import com.example.skladservicedevelop.dto.request.SupplyRequest;
@@ -8,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.sql.Driver;
 import java.util.List;
 
 @RestController
@@ -23,6 +26,7 @@ public class EmployeeController {
     private final SupplierService supplierService;
     private final EmployeeService employeeService;
     private final SupplyService supplyService;
+    private final DriverService driverService;
 
     @GetMapping("/product")
     public ResponseEntity<List<ProductResponse>> getAllProducts(
@@ -69,10 +73,31 @@ public class EmployeeController {
         supplyService.createSupply(request);
         return ResponseEntity.ok("Supply recorded successfully by admin");
     }
-    // В EmployeeController.java
-    @GetMapping("/list") // Полный путь будет: /employee/list
+    @GetMapping("/list")
     public ResponseEntity<List<EmployeeResponse>> getAllEmployees(
             @RequestParam(required = false) Integer warehouseId) {
         return ResponseEntity.ok(employeeService.getAll(warehouseId));
+    }
+    @GetMapping("/driver")
+    public ResponseEntity<List<DriverResponse>> getAll(@RequestParam(required = false) Integer warehouseId) {
+        return ResponseEntity.ok(driverService.findAllNotDeleted(warehouseId));
+    }
+
+    @PostMapping("/driver")
+    public ResponseEntity<?> create(@RequestBody DriverRequest request) {
+        driverService.save(request);
+        return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/driver/{id}")
+    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody DriverRequest request) {
+        driverService.update(id, request);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/driver/{id}")
+    public ResponseEntity<?> delete(@PathVariable Long id) {
+        driverService.delete(id);
+        return ResponseEntity.ok().build();
     }
 }

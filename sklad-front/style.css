@@ -179,10 +179,13 @@ button {
   align-items: center;
   z-index: 2000;
 }
-
+#alertModal {
+  z-index: 3000;
+}
 .modal-content {
   background: var(--modal-bg);
   padding: 30px;
+  margin: 0 auto;
   border-radius: 14px;
   box-shadow: var(--shadow);
   max-width: 500px;
@@ -271,7 +274,6 @@ td {
 }
 /* Основной контейнер */
 .sale-container {
-  display: grid;
   grid-template-columns: 1fr 350px; /* 350px для сайдбара на десктопе */
   gap: 25px;
   align-items: start;
@@ -373,20 +375,28 @@ td {
   width: 100%;
   color: white;
   border: none;
-  padding: 15px;
+  padding: 9px;
   border-radius: 8px;
   font-size: 1.1rem;
   font-weight: bold;
   cursor: pointer;
-  margin-top: 20px;
   background: var(--success);
   transition: background 0.3s;
 }
-
+.search-box {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
 .btn-checkout:hover {
   background: var(--primary-dark);
 }
-
+.flex_it {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  gap: 5px;
+}
 @media (max-width: 1024px) {
   .menu-toggle {
     display: flex;
@@ -395,12 +405,20 @@ td {
     display: flex;
     align-items: center;
   }
+  .search-box {
+    flex-direction: column;
+  }
   .sale-container {
     grid-template-columns: 1fr;
   }
 
   .sale-sidebar {
     position: static;
+  }
+  .form-group {
+    display: flex !important;
+    justify-content: space-around;
+    align-items: center;
   }
   .nav-links {
     position: fixed;
@@ -410,10 +428,106 @@ td {
     height: 100vh;
     background: var(--primary-dark);
     flex-direction: column;
-    padding: 80px 20px 20px 20px;
+    padding: 50px 20px 20px 20px;
     transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: -5px 0 15px rgba(0, 0, 0, 0.2);
     gap: 10px;
+  }
+  #prodSearch,
+  #woQty,
+  #woReason,
+  #searchInput {
+    width: 80% !important;
+    margin: 0 auto;
+  }
+  #selectClient,
+  #selectDriver,
+  #proxyDate {
+    width: 50% !important;
+    margin: 0 auto;
+  }
+  #checkoutModal .modal-content {
+    width: 98%;
+    margin: 10px auto;
+    max-height: 95vh;
+    overflow-y: auto; /* Скролл, если контент длинный */
+  }
+  .modal-buttons {
+    flex-direction: column;
+  }
+  .sale-card {
+    margin-top: 15px;
+  }
+  .page-header {
+    margin: 0 auto;
+    text-align: center;
+  }
+  #supplySupplier {
+    width: 210px !important;
+  }
+  /* Заставляем колонки (Корзина и Оплата) встать друг под друга */
+  #checkoutModal .modal-content > div[style*="display: flex"] {
+    flex-direction: column !important;
+    padding: 10px !important;
+  }
+
+  /* Убираем фиксированную ширину колонок */
+  #checkoutModal div[style*="min-width: 400px"],
+  #checkoutModal div[style*="width: 300px"] {
+    min-width: 100% !important;
+    width: 100% !important;
+    padding: 10px !important;
+    box-sizing: border-box;
+  }
+
+  /* Превращаем таблицу корзины в карточки */
+  #checkoutModal table thead {
+    display: none; /* Скрываем шапку таблицы */
+  }
+
+  #checkoutModal table tr {
+    display: block;
+    border: 1px solid #ddd;
+    margin-bottom: 10px;
+    padding: 10px;
+    border-radius: 8px;
+    position: relative;
+    background: #fff;
+  }
+
+  #checkoutModal table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: none;
+    padding: 5px 0;
+    text-align: right;
+  }
+
+  /* Добавляем названия полей слева */
+  #checkoutModal table td::before {
+    content: attr(data-label);
+    font-weight: bold;
+    color: #666;
+    font-size: 0.9em;
+    text-align: left;
+  }
+
+  /* Кнопка удаления (крестик) — позиционируем красиво */
+  #checkoutModal table td.actions {
+    justify-content: flex-end;
+    border-top: 1px solid #eee;
+    margin-top: 5px;
+    padding-top: 10px;
+  }
+
+  /* Увеличиваем поля ввода и кнопки для удобства нажатия пальцем */
+  .pay-input,
+  #payCurrency,
+  #payMethod,
+  .btn-checkout {
+    height: 45px !important;
+    font-size: 16px !important;
   }
   .filter-panel {
     flex-direction: column;
@@ -428,7 +542,10 @@ td {
   .nav-links.active {
     right: 0;
   }
-
+  h2,
+  h1 {
+    font-size: 20px !important;
+  }
   .nav-links a {
     font-size: 18px;
     display: block;
@@ -467,18 +584,24 @@ td {
   }
   input,
   select {
-    width: 70%;
+    width: 120px !important;
   }
   .filter_top {
     display: flex;
   }
   .filter-section {
-    display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
+    width: 100%;
   }
-  .filter-section input,
-  select {
-    width: 65%;
+  .action-section {
+    flex-direction: column;
+  }
+  .flex_it {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 30px;
+    margin-top: 10px;
   }
 }
 
@@ -487,9 +610,6 @@ td {
     flex-direction: column;
     gap: 15px;
     text-align: center;
-  }
-  select {
-    width: 80%;
   }
   .btn-add {
     width: 100%;

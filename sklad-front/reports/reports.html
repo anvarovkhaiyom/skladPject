@@ -42,6 +42,12 @@
         <li data-role="ADMIN,EMPLOYEE">
           <a href="/checkout/checkout.html">Продажи</a>
         </li>
+        <li data-role="SUPER_ADMIN,ADMIN">
+          <a href="/expense/expense.html">Расходы</a>
+        </li>
+        <li data-role="SUPER_ADMIN,ADMIN">
+          <a href="/write-off/write-off.html">Списания</a>
+        </li>
         <li data-role="ADMIN,EMPLOYEE">
           <a href="/supply/supplies.html">Приход</a>
         </li>
@@ -72,25 +78,29 @@
       <div class="analytics-section">
         <div class="filter-panel">
           <div class="filter-section">
-            <div class="filter-group">
-              <label>От:</label>
-              <input type="date" id="dateStart" />
+            <div class="flex_it">
+              <div class="filter-group">
+                <label>От:</label>
+                <input type="date" id="dateStart" />
+              </div>
+              <div class="filter-group">
+                <label>До:</label>
+                <input type="date" id="dateEnd" />
+              </div>
             </div>
-            <div class="filter-group">
-              <label>До:</label>
-              <input type="date" id="dateEnd" />
-            </div>
-            <div class="filter-group">
-              <label>Клиент:</label>
-              <select id="clientFilter">
-                <option value="">Все клиенты</option>
-              </select>
-            </div>
-            <div class="filter-group">
-              <label>Сотрудник:</label>
-              <select id="employeeFilter">
-                <option value="">Все сотрудники</option>
-              </select>
+            <div class="flex_it">
+              <div class="filter-group">
+                <label></label>
+                <select id="clientFilter">
+                  <option value="">Все клиенты</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label></label>
+                <select id="employeeFilter">
+                  <option value="">Все сотрудники</option>
+                </select>
+              </div>
             </div>
             <div
               class="filter-group"
@@ -105,13 +115,33 @@
           </div>
 
           <div class="action-section">
-            <button class="btn-reset" onclick="resetFilters()">Сбросить</button>
-            <button class="btn-excel" onclick="downloadGlobal('sales-excel')">
-              Продажи Excel
-            </button>
-            <button class="btn-excel" onclick="downloadGlobal('stock-excel')">
-              Склад Excel
-            </button>
+            <div class="flex_it">
+              <button class="btn-reset" onclick="resetFilters()">
+                Сбросить
+              </button>
+              <button class="btn-excel" onclick="downloadGlobal('sales-excel')">
+                Продажи Excel
+              </button>
+            </div>
+            <div class="flex_it">
+              <button class="btn-excel" onclick="downloadGlobal('stock-excel')">
+                Склад Excel
+              </button>
+              <button
+                class="btn-excel"
+                onclick="downloadGlobal('supply-history-excel')"
+              >
+                История поставок
+              </button>
+            </div>
+            <div class="flex_it">
+              <button
+                class="btn-excel"
+                onclick="downloadGlobal('movement-excel')"
+              >
+                Журнал движений
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -128,21 +158,35 @@
         <tbody id="salesBody"></tbody>
       </table>
       <div class="stats-cards">
-        <div class="card">
-          <h3>Выручка за период</h3>
-          <p id="statRevenue">0 ₸</p>
+        <div class="flex_it">
+          <div class="card">
+            <h3>Выручка</h3>
+            <p id="statRevenue">0 ₸</p>
+          </div>
+          <div class="card">
+            <h3>Прибыль</h3>
+            <p id="statProfit" style="color: #27ae60">0 ₸</p>
+          </div>
         </div>
-        <div class="card">
-          <h3>Прибыль</h3>
-          <p id="statProfit" style="color: #27ae60">0 ₸</p>
+        <div class="flex_it">
+          <div class="card">
+            <h3>На складе</h3>
+            <p id="statStockItems">0 шт</p>
+          </div>
+          <div class="card">
+            <h3>Оценка склада</h3>
+            <p id="statStockValue">0 ₸</p>
+          </div>
         </div>
-        <div class="card">
-          <h3>Товаров на складе</h3>
-          <p id="statStockItems">0 шт</p>
-        </div>
-        <div class="card">
-          <h3>Оценка склада (закуп)</h3>
-          <p id="statStockValue">0 ₸</p>
+        <div class="flex_it">
+          <div class="card">
+            <h3>Расходы</h3>
+            <p id="statExpenses" style="color: #e74c3c">0 ₸</p>
+          </div>
+          <div class="card">
+            <h3>Списания</h3>
+            <p id="statWriteOffs" style="color: #e67e22">0 ₸</p>
+          </div>
         </div>
       </div>
     </div>

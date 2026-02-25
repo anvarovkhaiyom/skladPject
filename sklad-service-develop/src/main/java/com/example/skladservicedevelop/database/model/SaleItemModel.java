@@ -36,4 +36,6 @@ public class SaleItemModel {
 
     @Column(name = "items_per_box_at_sale")
     private BigDecimal itemsPerBoxAtSale;
+    @Column(name = "cost_price_at_sale", nullable = false)
+    private BigDecimal costPriceAtSale;
 }
