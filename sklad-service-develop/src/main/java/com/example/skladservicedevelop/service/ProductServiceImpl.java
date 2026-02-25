@@ -67,7 +67,6 @@ public class ProductServiceImpl implements ProductService {
         product.setStockQuantity(request.getStockQuantity());
         product.setBarcode(request.getBarcode());
         product.setPhotoUrl(request.getPhotoUrl());
-        product.setSku(request.getSku());
         product.setItemsInBox(request.getItemsInBox());
 
         product.setWeightBrutto(request.getWeightBrutto());
