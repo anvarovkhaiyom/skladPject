@@ -9,9 +9,9 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class MovementDto {
     private LocalDateTime date;
-    private String type; // "ПРИХОД" или "РАСХОД"
+    private String type;
     private String docNumber;
-    private String counterparty; // Поставщик или Клиент
+    private String counterparty;
     private String employee;
     private BigDecimal amount;
     private String warehouse;

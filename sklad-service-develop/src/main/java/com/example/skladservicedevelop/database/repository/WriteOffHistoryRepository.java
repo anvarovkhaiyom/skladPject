@@ -9,10 +9,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface WriteOffHistoryRepository extends JpaRepository<WriteOffHistoryModel, Integer> {
-    // Для общего отчета
     List<WriteOffHistoryModel> findAllByWriteOffDateBetween(LocalDateTime start, LocalDateTime end);
-
-    // Для отчета по складу
     List<WriteOffHistoryModel> findAllByWarehouseIdAndWriteOffDateBetween(Integer warehouseId, LocalDateTime start, LocalDateTime end);
 
     @Query(value = "SELECT w.* FROM write_off_history w WHERE w.warehouse_id = :warehouseId", nativeQuery = true)

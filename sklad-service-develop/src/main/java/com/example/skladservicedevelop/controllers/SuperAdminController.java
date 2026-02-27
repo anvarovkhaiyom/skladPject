@@ -24,8 +24,6 @@ public class SuperAdminController {
     private final ReportService reportService;
     private final CurrencyService currencyService;
 
-    // --- УПРАВЛЕНИЕ СКЛАДАМИ ---
-
     @PostMapping("/warehouses")
     public ResponseEntity<WarehouseResponse> createWarehouse(@RequestBody WarehouseRequest request) {
         return ResponseEntity.ok(warehouseService.create(request));
@@ -47,11 +45,8 @@ public class SuperAdminController {
         return ResponseEntity.noContent().build();
     }
 
-    // --- УПРАВЛЕНИЕ СОТРУДНИКАМИ (Всех складов) ---
-
     @PostMapping("/employees")
     public ResponseEntity<EmployeeResponse> createEmployee(@RequestBody EmployeeRequest request) {
-        // Здесь важно: в EmployeeRequest должен быть warehouseId
         return ResponseEntity.ok(employeeService.create(request));
     }
 
@@ -60,14 +55,11 @@ public class SuperAdminController {
             @RequestParam(required = false) Integer warehouseId) {
         return ResponseEntity.ok(employeeService.getAll(warehouseId));
     }
-    // --- ГЛОБАЛЬНАЯ ВАЛЮТА ---
 
     @PostMapping("/currencies")
     public ResponseEntity<CurrencyResponse> createCurrency(@RequestBody CurrencyRequest request) {
         return ResponseEntity.ok(currencyService.createCurrency(request));
     }
-
-    // --- ГЛОБАЛЬНЫЕ ОТЧЕТЫ (По всей сети) ---
 
     @GetMapping("/reports/summary")
     public ResponseEntity<StockSummaryResponse> getGlobalStockSummary() {
@@ -87,7 +79,7 @@ public class SuperAdminController {
     public ResponseEntity<byte[]> downloadGlobalSalesReport(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end,
-            @RequestParam(required = false) Integer warehouseId) { // ОБЯЗАТЕЛЬНО ДОБАВИТЬ
+            @RequestParam(required = false) Integer warehouseId) {
 
         byte[] excel = reportService.generateGeneralSalesReportExcel(start, end, null, warehouseId);
 

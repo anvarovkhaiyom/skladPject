@@ -30,17 +30,12 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Transactional
     public EmployeeResponse create(EmployeeRequest request) {
         EmployeeModel employee = new EmployeeModel();
-        // ... твои поля (fullName, login и т.д.) ...
         employee.setFullName(request.getFullName());
         employee.setPosition(request.getPosition());
         employee.setRole(request.getRole());
         employee.setLogin(request.getLogin());
         employee.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-
-        // НОВАЯ ЛОГИКА ПРИВЯЗКИ К СКЛАДУ
         Integer targetWarehouseId = request.getWarehouseId();
-
-        // Если Супер-админ не выбрал склад в модалке, или это обычный админ
         if (targetWarehouseId == null) {
             EmployeeModel creator = securityHelper.getCurrentEmployee();
             if (creator.getWarehouse() != null) {
@@ -49,7 +44,6 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
 
         if (targetWarehouseId != null) {
-            // Тебе нужно внедрить WarehouseRepository в этот сервис
             WarehouseModel warehouse = warehouseRepository.findById(targetWarehouseId)
                     .orElseThrow(() -> new RuntimeException("Склад не найден"));
             employee.setWarehouse(warehouse);
@@ -93,32 +87,25 @@ public class EmployeeServiceImpl implements EmployeeService {
         String role = currentUser.getRole();
         List<EmployeeModel> employees;
 
-        // 1. ЛОГИКА ДЛЯ СУПЕР-АДМИНА (Гендиректор)
         if (role.equals("ROLE_SUPER_ADMIN") || role.equals("SUPER_ADMIN")) {
             if (warehouseId != null) {
-                // Если выбрал склад — фильтруем по складу
                 employees = employeeRepository.findAllByWarehouseId(warehouseId);
             } else {
-                // Если не выбрал — видит вообще всех (включая других суперов)
                 employees = employeeRepository.findAll();
             }
         }
-        // 2. ЛОГИКА ДЛЯ ОБЫЧНОГО АДМИНА
         else if (role.equals("ROLE_ADMIN")) {
             Integer myWarehouseId = currentUser.getWarehouse() != null ? currentUser.getWarehouse().getId() : null;
 
             if (myWarehouseId != null) {
-                // Видит ТОЛЬКО свой склад и НИКОГДА не видит Суперадминов
                 employees = employeeRepository.findAllByWarehouseId(myWarehouseId)
                         .stream()
                         .filter(e -> !e.getRole().contains("SUPER_ADMIN"))
                         .collect(Collectors.toList());
             } else {
-                // Если админ почему-то без склада — не показываем ничего из соображений безопасности
                 employees = Collections.emptyList();
             }
         }
-        // 3. ДЛЯ ОСТАЛЬНЫХ
         else {
             employees = Collections.emptyList();
         }

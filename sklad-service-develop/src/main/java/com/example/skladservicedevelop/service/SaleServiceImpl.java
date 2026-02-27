@@ -155,7 +155,6 @@ public class SaleServiceImpl implements SaleService {
             items.add(si);
             totalAmountBase = totalAmountBase.add(itemTotal);
 
-            // 3. Вычитание из остатка
             product.setStockQuantity(product.getStockQuantity().subtract(qtyToSale));
             productRepository.save(product);
         }
@@ -163,7 +162,6 @@ public class SaleServiceImpl implements SaleService {
         sale.setItems(items);
         sale.setTotalAmount(totalAmountBase);
 
-        // Логика платежей (без изменений)
         BigDecimal totalPaidInBase = BigDecimal.ZERO;
         List<SalePaymentModel> payments = new ArrayList<>();
         if (request.getPayments() != null) {

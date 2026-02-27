@@ -32,7 +32,7 @@ public class CurrencyServiceImpl implements CurrencyService {
         CurrencyModel model = currencyRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Валюта не найдена"));
         model.setName(request.getName());
-        model.setRate(request.getRate()); // Обновление курса
+        model.setRate(request.getRate());
         return toResponse(currencyRepository.save(model));
     }
     @Override

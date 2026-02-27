@@ -13,5 +13,5 @@ public class DriverRequest {
     private String carMark;
     private String additionalInfo;
     private BigDecimal salary;
-    private Integer warehouseId; // Передаем только ID склада
+    private Integer warehouseId;
 }

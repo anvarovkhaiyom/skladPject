@@ -55,7 +55,7 @@ public class InventoryOperationServiceImpl implements InventoryOperationService 
 
         Integer lastId = writeOffRepository.findMaxIdByWarehouseId(warehouse.getId());
         int nextId = (lastId == null) ? 1 : lastId + 1;
-        history.setDocumentNumber(String.format("СП-%07d", nextId)); // Например: СП-0000001
+        history.setDocumentNumber(String.format("СП-%07d", nextId));
 
         writeOffRepository.save(history);
     }

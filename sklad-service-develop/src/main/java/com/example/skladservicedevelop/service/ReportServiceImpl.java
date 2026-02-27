@@ -98,7 +98,7 @@ public class ReportServiceImpl implements ReportService {
             }
 
             String[] headers = {"№", "Код", "Товар", "В коробке", "Коробок", "Штук", "Цена", "Сумма"};
-            createTableHeader(sheet, 6, headers); // Сдвинул на 6 строку, чтобы влезла доверенность
+            createTableHeader(sheet, 6, headers);
 
             int rowIdx = 7;
             int npp = 1;
@@ -207,7 +207,6 @@ public class ReportServiceImpl implements ReportService {
         LocalDateTime startDT = start.atStartOfDay();
         LocalDateTime endDT = end.atTime(LocalTime.MAX);
 
-        // 1. Считаем Продажи (Revenue & COGS)
         List<SaleModel> sales = (finalWhId == null)
                 ? saleRepository.findAllBySaleDateBetween(startDT, endDT)
                 : saleRepository.findAllByWarehouseIdAndSaleDateBetween(finalWhId, startDT, endDT);
@@ -235,7 +234,6 @@ public class ReportServiceImpl implements ReportService {
             }
         }
 
-        // 2. Считаем Расходы (Expenses) - учитываем только если не фильтруем по категории товара
         BigDecimal totalExpenses = BigDecimal.ZERO;
         if (categoryId == null) {
             List<ExpenseModel> expenses = (finalWhId == null)
@@ -244,7 +242,6 @@ public class ReportServiceImpl implements ReportService {
             totalExpenses = expenses.stream().map(ExpenseModel::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
         }
 
-        // 3. Считаем Списания (Write-offs) - потери по себестоимости
         BigDecimal totalWriteOffCost = BigDecimal.ZERO;
         List<WriteOffHistoryModel> writeOffs = (finalWhId == null)
                 ? writeOffRepository.findAllByWriteOffDateBetween(startDT, endDT)
@@ -257,7 +254,6 @@ public class ReportServiceImpl implements ReportService {
             }
         }
 
-        // Итоговая чистая прибыль
         BigDecimal netProfit = totalRevenue.subtract(totalCostOfSales).subtract(totalExpenses).subtract(totalWriteOffCost);
 
         return new SalesSummaryResponse(
@@ -266,14 +262,13 @@ public class ReportServiceImpl implements ReportService {
                 netProfit,
                 (long) details.size(),
                 details,
-                totalExpenses,      // Добавь это поле в DTO
-                totalWriteOffCost   // Добавь это поле в DTO
+                totalExpenses,
+                totalWriteOffCost
         );
     }
 
     @Override
     public byte[] generateGeneralSalesReportExcel(LocalDate start, LocalDate end, Integer categoryId, Integer warehouseId) {
-        // Теперь передаем warehouseId, чтобы summary строился по выбранному складу
         SalesSummaryResponse summary = getSalesSummary(start, end, categoryId, warehouseId);
         try (Workbook workbook = new XSSFWorkbook()) {
             initStyles(workbook);
@@ -337,10 +332,8 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     public byte[] generateStockReportExcel(Integer warehouseId) {
-        // Определяем склад (приоритет фильтру, затем безопасности)
         Integer finalWhId = (warehouseId != null) ? warehouseId : securityHelper.getCurrentWarehouseId();
 
-        // Получаем товары только выбранного склада (или все, если ID null)
         List<ProductModel> products = (finalWhId == null)
                 ? productRepository.findAll()
                 : productRepository.findAllByWarehouseId(finalWhId);
@@ -407,7 +400,7 @@ public class ReportServiceImpl implements ReportService {
                 createCell(row, 7, s.getWarehouse().getName(), dataStyle);
             }
 
-            autoSizeColumns(sheet, headers.length); // Не забываем автоподбор ширины
+            autoSizeColumns(sheet, headers.length);
             return workbookToBytes(workbook);
         } catch (Exception e) {
             throw new RuntimeException("Ошибка экспорта поставок: " + e.getMessage(), e);
@@ -420,18 +413,16 @@ public class ReportServiceImpl implements ReportService {
         LocalDateTime e = end.atTime(LocalTime.MAX);
         List<MovementDto> journal = new ArrayList<>();
 
-        // Продажи
         saleRepository.findAllBySaleDateBetween(s, e).forEach(sale -> {
             if (warehouseId == null || sale.getWarehouse().getId().equals(warehouseId)) {
-                journal.add(new MovementDto(sale.getSaleDate(), "Продажа", "№" + sale.getDocumentNumber(),
+                journal.add(new MovementDto(sale.getSaleDate(), "Продажа",  sale.getDocumentNumber(),
                         getClientName(sale), sale.getEmployee().getFullName(), sale.getTotalAmount(), sale.getWarehouse().getName()));
             }
         });
 
-        // Приходы
         supplyHistoryRepository.findAllBySupplyDateBetween(s, e).forEach(supply -> {
             if (warehouseId == null || supply.getWarehouse().getId().equals(warehouseId)) {
-                journal.add(new MovementDto(supply.getSupplyDate(), "Приход", "№" + supply.getDocumentNumber(),
+                journal.add(new MovementDto(supply.getSupplyDate(), "Приход",  supply.getDocumentNumber(),
                         supply.getSupplier().getFullName(), supply.getEmployee().getFullName(), supply.getCostPrice().multiply(supply.getQuantity()), supply.getWarehouse().getName()));
             }
         });
@@ -453,7 +444,6 @@ public class ReportServiceImpl implements ReportService {
             }
         });
 
-        // Расходы
         expenseRepository.findAllByExpenseDateBetween(s, e).forEach(exp -> {
             if (warehouseId == null || exp.getWarehouse().getId().equals(warehouseId)) {
                 journal.add(new MovementDto(
@@ -477,14 +467,12 @@ public class ReportServiceImpl implements ReportService {
     public byte[] generateMovementJournalExcel(LocalDate start, LocalDate end, Integer warehouseId) {
         List<MovementDto> journal = getMovementJournal(start, end, warehouseId);
 
-        // Считаем итоги
         BigDecimal totalSales = BigDecimal.ZERO;
         BigDecimal totalSupplies = BigDecimal.ZERO;
         BigDecimal totalWriteOffs = BigDecimal.ZERO;
         BigDecimal totalExpenses = BigDecimal.ZERO;
 
         for (MovementDto m : journal) {
-            // Заменяем стрелки -> на классический case : break
             switch (m.getType()) {
                 case "Продажа":
                     totalSales = totalSales.add(m.getAmount());
@@ -554,7 +542,7 @@ public class ReportServiceImpl implements ReportService {
         LocalDateTime endDT = end.atTime(LocalTime.MAX);
         List<ArchiveDocumentDto> archive = new ArrayList<>();
 
-        // 1. Продажи (Отпуск)
+
         saleRepository.findAllBySaleDateBetween(startDT, endDT).stream()
                 .filter(sale -> warehouseId == null || sale.getWarehouse().getId().equals(warehouseId))
                 .filter(sale -> clientName == null || clientName.isEmpty() || getClientName(sale).contains(clientName))
@@ -563,7 +551,6 @@ public class ReportServiceImpl implements ReportService {
                         sale.getId(), "Отпуск", sale.getDocumentNumber(), sale.getSaleDate(), getClientName(sale), sale.getTotalAmount()
                 )));
 
-        // 2. Приходы
         supplyHistoryRepository.findAllBySupplyDateBetween(startDT, endDT).stream()
                 .filter(sup -> warehouseId == null || sup.getWarehouse().getId().equals(warehouseId))
                 .filter(sup -> clientName == null || clientName.isEmpty() || (sup.getSupplier() != null && sup.getSupplier().getFullName().contains(clientName)))
@@ -573,16 +560,14 @@ public class ReportServiceImpl implements ReportService {
                         sup.getCostPrice().multiply(sup.getQuantity())
                 )));
 
-        // 3. Списания (Добавляем!)
         writeOffRepository.findAllByWriteOffDateBetween(startDT, endDT).stream()
                 .filter(wo -> warehouseId == null || wo.getWarehouse().getId().equals(warehouseId))
                 .filter(wo -> employeeName == null || employeeName.isEmpty() || (wo.getEmployee() != null && wo.getEmployee().getFullName().contains(employeeName)))
                 .forEach(wo -> archive.add(new ArchiveDocumentDto(
                         wo.getId(), "Списание", wo.getDocumentNumber(), wo.getWriteOffDate(), wo.getProduct().getName(),
-                        wo.getProduct().getCostPrice().multiply(wo.getQuantity()).negate() // В минус
+                        wo.getProduct().getCostPrice().multiply(wo.getQuantity()).negate()
                 )));
 
-        // 4. Расходы (Добавляем!)
         expenseRepository.findAllByExpenseDateBetween(startDT, endDT).stream()
                 .filter(exp -> warehouseId == null || exp.getWarehouse().getId().equals(warehouseId))
                 .filter(exp -> employeeName == null || employeeName.isEmpty() || (exp.getEmployee() != null && exp.getEmployee().getFullName().contains(employeeName)))
@@ -634,7 +619,6 @@ public class ReportServiceImpl implements ReportService {
         Row row = sheet.createRow(rowIdx);
         Cell k = row.createCell(0);
         k.setCellValue(key);
-        // Сделаем ключи жирными
         CellStyle bold = sheet.getWorkbook().createCellStyle();
         Font f = sheet.getWorkbook().createFont();
         f.setBold(true);

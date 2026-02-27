@@ -10,12 +10,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface ExpenseRepository extends JpaRepository<ExpenseModel, Integer> {
-    // Для общего отчета (все склады)
     List<ExpenseModel> findAllByExpenseDateBetween(LocalDateTime start, LocalDateTime end);
-
-    // Для отчета по конкретному складу
     List<ExpenseModel> findAllByWarehouseIdAndExpenseDateBetween(Integer warehouseId, LocalDateTime start, LocalDateTime end);
-
     @Query(value = "SELECT e.* FROM expenses e WHERE e.warehouse_id = :warehouseId", nativeQuery = true)
     List<ExpenseModel> findByWarehouseIdNative(@Param("warehouseId") Integer warehouseId);
     @Query("SELECT MAX(e.id) FROM ExpenseModel e WHERE e.warehouse.id = :warehouseId")

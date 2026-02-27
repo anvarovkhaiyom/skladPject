@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 public class DriverServiceImpl implements DriverService {
 
     private final DriverRepository driverRepository;
-    private final WarehouseRepository warehouseRepository; // Нужен для поиска склада
+    private final WarehouseRepository warehouseRepository;
 
     @Override
     public List<DriverResponse> findAllNotDeleted(Integer warehouseId) {
@@ -34,7 +34,7 @@ public class DriverServiceImpl implements DriverService {
     @Override
     @Transactional
     public void save(DriverRequest request) {
-        validateNewDriver(request); // Проверки перед созданием
+        validateNewDriver(request);
 
         DriverModel model = new DriverModel();
         updateModelFromRequest(model, request);
@@ -47,22 +47,19 @@ public class DriverServiceImpl implements DriverService {
         DriverModel model = driverRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Водитель не найден"));
 
-        validateUpdateDriver(id, request); // Проверки перед обновлением
+        validateUpdateDriver(id, request);
 
         updateModelFromRequest(model, request);
         driverRepository.save(model);
     }
 
     private void validateNewDriver(DriverRequest request) {
-        // 1. Проверка на пустые обязательные поля
         if (request.getFullName() == null || request.getFullName().isEmpty())
             throw new RuntimeException("ФИО не может быть пустым");
         if (request.getPhone() == null || request.getPhone().isEmpty())
             throw new RuntimeException("Телефон не может быть пустым");
         if (request.getCarNumber() == null || request.getCarNumber().isEmpty())
             throw new RuntimeException("Гос. номер не может быть пустым");
-
-        // 2. Проверка уникальности
         if (driverRepository.existsByPhone(request.getPhone())) {
             throw new RuntimeException("Водитель с таким телефоном уже существует");
         }
@@ -101,7 +98,6 @@ public class DriverServiceImpl implements DriverService {
                 .build();
     }
 
-    // Вспомогательный метод для заполнения Модели из Request
     private void updateModelFromRequest(DriverModel model, DriverRequest request) {
         model.setFullName(request.getFullName());
         model.setPhone(request.getPhone());
